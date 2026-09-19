@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "local-agent-m0": {
+      "type": "stdio",
+      "command": "C:/ABSOLUTE/PATH/TO/NODE22/node.exe",
+      "args": ["${workspaceFolder}/dist/src/m0/mcp-server.js"]
+    }
+  }
+}

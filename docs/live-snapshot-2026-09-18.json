@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "platform": "win32",
+  "node": "22.23.2",
+  "git": "2.54.0.windows.1",
+  "model": "qwen3:8b",
+  "modelDigest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "baseCommit": "77825efdaa74e44340eb96f3d62976b8159fe36d",
+  "snapshotId": "7994cd1a60b3abccb60b40f532f3b989b2fbfdd93528c18f75948ceac44b43d3",
+  "metrics": [
+    { "wallMs": 6566, "promptTokens": 185, "generatedTokens": 21 },
+    { "wallMs": 314, "promptTokens": 317, "generatedTokens": 4 }
+  ],
+  "checks": ["validated read_file call", "snapshot value 731 followed instead of dirty value 999", "canary absent from model payload and tool result", "checkout and index unchanged"],
+  "scope": "Two-turn read-only fixture smoke; not production explorer loop or MCP end-to-end. Temporary fixture removed after test."
+}

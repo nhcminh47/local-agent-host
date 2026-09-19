@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "platform": "win32",
+  "node": "22.23.2",
+  "provider": "live-qwen3:8b",
+  "baseCommit": "9f77039bff2a0c23428e9a23a97fb1bc812a1888",
+  "snapshotId": "a0dee9aa324a88bccabd95f474f465490acc7b39955b1469ddc6db9fb2c2b14d",
+  "metrics": { "modelTurns": 2, "toolCalls": 1, "wallMs": 5997 },
+  "checks": [
+    "MCP submission and result retrieval through daemon",
+    "model answered from admitted commit after HEAD advance",
+    "completed task and idempotent duplicate survived daemon restart",
+    "checkout and index unchanged by analysis",
+    "canary absent from task result",
+    "HTTP Origin rejected"
+  ],
+  "scope": "Live Ollama with local MCP SDK client, daemon and explorer on a synthetic Git fixture; not Cursor UI or macOS. Interrupted-running recovery and captured model payload canary checks were verified separately with the deterministic fake Ollama integration test."
+}

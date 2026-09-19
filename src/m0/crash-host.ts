@@ -1,0 +1,10 @@
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+const marker = process.argv[2];
+if (!marker) process.exit(2);
+const worker = spawn(process.execPath, [fileURLToPath(new URL('./crash-worker.js', import.meta.url)), marker], { detached: process.platform !== 'win32', stdio: 'ignore', windowsHide: true });
+worker.unref();
+const guardian = spawn(process.execPath, [fileURLToPath(new URL('./crash-guardian.js', import.meta.url)), String(process.pid), String(worker.pid), marker], { detached: true, stdio: 'ignore', windowsHide: true });
+guardian.unref();
+process.send?.({ workerPid: worker.pid, guardianPid: guardian.pid });
+setInterval(() => undefined, 1000);

@@ -1,0 +1,40 @@
+{
+  "name": "local-agent-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-platform MCP local-agent host",
+  "engines": { "node": ">=22.23.2 <23" },
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test dist/tests/*.test.js",
+    "doctor": "node dist/src/m0/doctor.js",
+    "spike:mcp": "node dist/src/m0/mcp-smoke.js",
+    "spike:process": "node dist/src/m0/process-smoke.js",
+    "spike:ollama": "node dist/src/m0/ollama-smoke.js",
+    "discover:repo": "node dist/src/m0/repo-discovery.js",
+    "eval:coding": "node dist/src/m0/coding-eval.js",
+    "spike:crash": "node dist/src/m0/crash-containment.js",
+    "m1:mcp": "node dist/src/m1/mcp-server.js",
+    "m1:daemon": "node dist/src/m1/daemon.js",
+    "m1:smoke": "node dist/src/m1/mcp-smoke.js",
+    "m1:smoke:ollama": "node dist/src/m1/mcp-smoke.js",
+    "m2:smoke:live": "node dist/src/m2/snapshot-live-smoke.js",
+    "m2:smoke:mcp": "node dist/src/m2/explorer-mcp-smoke.js",
+    "m2:acceptance": "node scripts/acceptance.mjs",
+    "m2:grade": "node scripts/grade-acceptance.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "better-sqlite3": "13.0.3",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "22.20.3",
+    "typescript": "7.0.2"
+  }
+}

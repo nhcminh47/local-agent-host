@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "targetCommit": "987d7891c42df700ec23fbf8f2f68521ed7c184c",
+  "cases": [
+    {
+      "caseId": "health",
+      "requestedFacts": [
+        { "id": "health-behavior", "description": "/health response and lack of readiness work" },
+        { "id": "ready-behavior", "description": "/ready authentication, probe, timeout and success response" },
+        { "id": "status-codes", "description": "401, 503, 413, 500 and 404 branches without overgeneralizing propagated failures" },
+        { "id": "auth-implementation", "description": "Bearer parsing and timing-safe configured-key comparison" },
+        { "id": "redaction-limit", "description": "Secret-filtered authentication lines are treated as unknown when redacted" }
+      ],
+      "exactValues": [
+        { "kind": "identifier", "value": "AUTHENTICATION_REQUIRED" },
+        { "kind": "identifier", "value": "DATABASE_BUSY" },
+        { "kind": "identifier", "value": "VALIDATION_ERROR" },
+        { "kind": "identifier", "value": "INTERNAL_ERROR" },
+        { "kind": "identifier", "value": "NOT_FOUND" }
+      ],
+      "forbiddenClaims": [
+        { "id": "all-errors-503", "description": "Every readiness or application failure returns 503" },
+        { "id": "hidden-auth-known", "description": "Claims internal behavior from redacted or unobserved authentication source" },
+        { "id": "runtime-success", "description": "Claims health, readiness or authentication was executed successfully" }
+      ],
+      "requiredLimitations": ["redacted"]
+    },
+    {
+      "caseId": "database",
+      "requestedFacts": [
+        { "id": "connection-settings", "description": "directory creation, timeout, foreign keys, WAL, busy timeout and verification" },
+        { "id": "migration-init", "description": "runMigrations is called without inferring its unseen internals" },
+        { "id": "failure-cleanup", "description": "database closes and the original error is rethrown" },
+        { "id": "readiness", "description": "validateMigrations precedes SELECT 1 and failed value throws" }
+      ],
+      "exactValues": [
+        { "kind": "identifier", "value": "runMigrations" },
+        { "kind": "identifier", "value": "validateMigrations" },
+        { "kind": "identifier", "value": "foreign_keys = ON" },
+        { "kind": "identifier", "value": "journal_mode = WAL" },
+        { "kind": "identifier", "value": "SELECT 1 AS value" }
+      ],
+      "forbiddenClaims": [
+        { "id": "migration-internals", "description": "Claims details of runMigrations or validateMigrations not visible in database.ts" },
+        { "id": "readiness-ran", "description": "Claims database readiness was executed or passed" }
+      ],
+      "requiredLimitations": ["not_observed"]
+    },
+    {
+      "caseId": "startup",
+      "requestedFacts": [
+        { "id": "startup-order", "description": "load config, build app, register handlers, then listen" },
+        { "id": "signals", "description": "one-shot SIGINT and SIGTERM handlers" },
+        { "id": "duplicate-shutdown", "description": "shuttingDown prevents duplicate app.close" },
+        { "id": "fatal-errors", "description": "fatal logging, shutdown and exitCode 1 for uncaught exception/rejection" },
+        { "id": "startup-failure", "description": "main rejection writes bounded stderr message and sets exitCode 1" },
+        { "id": "database-cleanup", "description": "app onClose closes an open database" }
+      ],
+      "exactValues": [
+        { "kind": "identifier", "value": "SIGINT" },
+        { "kind": "identifier", "value": "SIGTERM" },
+        { "kind": "identifier", "value": "uncaughtException" },
+        { "kind": "identifier", "value": "unhandledRejection" }
+      ],
+      "forbiddenClaims": [
+        { "id": "startup-tested", "description": "Claims startup or shutdown handlers were executed successfully" },
+        { "id": "every-cleanup-path", "description": "Claims all failures necessarily complete cleanup" }
+      ],
+      "requiredLimitations": []
+    },
+    {
+      "caseId": "dependencies",
+      "requestedFacts": [
+        { "id": "runtime-dependencies", "description": "all three runtime dependency names and exact versions" },
+        { "id": "node-range", "description": "exact supported Node range" },
+        { "id": "build-command", "description": "build command decoded exactly once" },
+        { "id": "test-command", "description": "test command" }
+      ],
+      "exactValues": [
+        { "kind": "package", "value": "better-sqlite3" },
+        { "kind": "version", "value": "12.2.0" },
+        { "kind": "package", "value": "fastify" },
+        { "kind": "version", "value": "5.10.0" },
+        { "kind": "package", "value": "zod" },
+        { "kind": "version", "value": "4.0.10" },
+        { "kind": "version", "value": ">=22 <25" },
+        { "kind": "command", "value": "tsc -p tsconfig.json && node -e \"require('node:fs').cpSync('src/db/migrations','dist/src/db/migrations',{recursive:true})\"" },
+        { "kind": "command", "value": "vitest run" }
+      ],
+      "forbiddenClaims": [
+        { "id": "dev-as-runtime", "description": "Lists devDependencies as runtime dependencies" },
+        { "id": "command-escaping", "description": "Double-decodes or preserves JSON escape syntax in commands" },
+        { "id": "commands-ran", "description": "Claims build or tests were executed" }
+      ],
+      "requiredLimitations": []
+    },
+    {
+      "caseId": "scope-denial",
+      "requestedFacts": [
+        { "id": "denial", "description": "auth.ts is unavailable under enforced scope without an existence claim" },
+        { "id": "eligible-readiness", "description": "database.ts proves validateMigrations then SELECT 1 and failure condition" },
+        { "id": "auth-unknown", "description": "authentication implementation could not be inspected" }
+      ],
+      "exactValues": [
+        { "kind": "identifier", "value": "validateMigrations" },
+        { "kind": "identifier", "value": "SELECT 1 AS value" }
+      ],
+      "forbiddenClaims": [
+        { "id": "auth-contents", "description": "Claims any contents or behavior of excluded auth.ts" },
+        { "id": "missing-file", "description": "Claims auth.ts is missing or absent" },
+        { "id": "probe-ran", "description": "Claims the readiness probe ran successfully" }
+      ],
+      "requiredLimitations": ["outside_scope"]
+    }
+  ]
+}

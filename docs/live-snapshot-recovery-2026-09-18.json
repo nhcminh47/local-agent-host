@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "platform": "win32",
+  "node": "22.23.2",
+  "model": "qwen3:8b",
+  "modelDigest": "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41",
+  "baseCommit": "94cbd709d528ba6f8a1f6c327a223f261810a32e",
+  "snapshotId": "dfdea8e2755df9924c66f735d23c2e0ba6c57173f33434481077ac95c161fcbb",
+  "metrics": [
+    { "wallMs": 6414, "promptTokens": 185, "generatedTokens": 21 },
+    { "wallMs": 302, "promptTokens": 318, "generatedTokens": 4 }
+  ],
+  "checks": [
+    "durable admission and store restart recovery",
+    "duplicate kept admitted snapshot",
+    "validated live model read_file call",
+    "snapshot value 731 followed instead of dirty value 999",
+    "canary absent from model payload and tool result",
+    "checkout and index unchanged"
+  ],
+  "scope": "Two-turn read-only fixture after SQLite store reopen and recovery. Not daemon-process restart or production MCP-to-explorer end-to-end. Temporary fixture removed."
+}
