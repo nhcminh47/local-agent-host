@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
-import { endpoint } from '../src/m0/doctor.js';
+import { endpoint } from '../src/diagnostics/compatibility/doctor.js';
 
 test('SQLite native binding: WAL, rollback, close and reopen on Unicode path', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'local-agent M0 tiếng Việt-'));

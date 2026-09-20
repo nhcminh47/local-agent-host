@@ -2,7 +2,9 @@
 
 Started 18 September 2026 after the Windows M1 core gate passed.
 
-Latest checkpoint (19 September): the claim-level result boundary, grounding/coverage repairs and acceptance grader are implemented. On pinned Node 22.23.2 / pnpm 11.7.0, `pnpm check` passes and the Windows deterministic suite passes **90/90 tests with zero skips**. Two unchanged frozen `qwen3:8b` real-repository runs were manually reviewed at **5/5** each; pair grading accepted them with no issues and all **50/50** preservation checks passed. This accepts the Windows real-task quality gate only. Native Cursor/macOS topology is unverified, M2 remains open, and M3 remains disabled. See the [current qualification report](m2-quality-gate-v31-2026-09-19.md).
+Live checkpoint before the 413 fix (20 September): the live rerun after source reorganization completed **5/5** tasks and passed **25/25** preservation checks, but agent review graded **4/5** because health overgeneralized the 413 error branch. No confirmation run was started. Strict checking, **90/90** deterministic tests and the MCP smoke passed on Node 22.23.2 / pnpm 11.7.0. The historical v31 pair remains recorded, but its local review metadata identifies an agent reviewer, not an independently verified human review. Current-source qualification, human review and native Cursor/macOS topology remain open; M3 remains disabled. See the [live rerun report](m2-live-rerun-2026-09-20.md) and [historical v31 report](m2-quality-gate-v31-2026-09-19.md).
+
+Latest fix checkpoint (20 September): prompt contract **v32** adds a narrow conditional-status context guard and targeted bounded repair; the daemon independently returns a usable **413 REQUEST_TOO_LARGE** for oversized bodies. Strict checking and **102/102** deterministic tests passed, as did M1 reconnect and M2 MCP smoke (seven canaries). The original overgeneralized claim is rejected in deterministic regressions. **Live v32 qualification has not been run**; human review, native topology and M3 gates are unchanged. See the [413 correction memory](memories/2026-09-20-413-corrections.md).
 
 ## Agreed capability policy
 

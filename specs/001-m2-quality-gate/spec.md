@@ -142,3 +142,13 @@ As the project owner, I can see that Windows SDK quality acceptance and native C
 - Model benchmarking or selecting a new default model.
 - Repository edit tools, arbitrary command execution, test execution by the model, worktrees, commits, merges, or pushes.
 - Capacity, throughput, and continuation-after-limit work from technical-plan section 19.
+
+## Live rerun — 20 September 2026
+
+Repeat the frozen Windows suite against the reorganized host source using the existing endpoint and credential loader. Preserve the five cases, target commit, model, inference settings and budgets. Record current runtime, grounding and preservation outcomes separately from historical qualification. Run an unchanged confirmation only if the first run meets the acceptance prerequisites. Missing human semantic review remains unaccepted; an agent review must be labelled as such. No runtime changes or native topology claims are in scope.
+
+## Conditional status claims correction — 20 September 2026
+
+FR-021: For the supported single-line JavaScript/TypeScript numeric status ternary (a const/let status-named variable assigned condition ? numeric HTTP status : numeric HTTP status), a finding mentioning either branch status MUST cite and quote the complete conditional expression when that assignment is cited or directly feeds a cited nearby response. A symbolic response label such as VALIDATION_ERROR MUST NOT substitute for the selecting condition. Missing branch context triggers the existing bounded grounding repair; repeated failure cannot publish the rejected finding.
+
+Acceptance: reject the observed “413 for validation errors” overgeneralization; accept a finding quoting the selecting expression and fallback; cover other numeric statuses, separate findings, nearby response-only citations, redacted/unobserved predicates, unrelated constants, and exhausted repair. Unsupported syntax remains outside this narrow guard: semanticVerification stays not_performed and human review remains required. Prompt contract advances to v32; frozen live qualification must be rerun separately before acceptance.

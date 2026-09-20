@@ -1,3 +1,5 @@
+import { hasErrorCode } from "../shared/errors.js";
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { AnalyzeRepoInput } from '../domain/task-contracts.js';
 import type { CapabilityService } from '../exploration/capability-service.js';
 import type { ExplorerProvider } from '../provider/explorer-provider.js';
@@ -43,7 +45,7 @@ export class ExplorerRunner {
         else if (status === 'running') {
           if (deadline.aborted) store.expireDue();
           else if (error instanceof ExplorerBlocked) store.blockLeased(next.id, owner, claimed.generation, error.requiredAction);
-          else if (error instanceof Error && ['EXPLORER_CONTEXT_LIMIT', 'EXPLORER_TOOL_LIMIT', 'EXPLORER_TURN_LIMIT'].includes(error.message)) store.budgetExceededLeased(next.id, owner, claimed.generation, error.message);
+          else if (hasErrorCode(error, [ERROR_CODES.EXPLORER_CONTEXT_LIMIT, ERROR_CODES.EXPLORER_TOOL_LIMIT, ERROR_CODES.EXPLORER_TURN_LIMIT])) store.budgetExceededLeased(next.id, owner, claimed.generation, error.message);
           else store.failLeased(next.id, owner, claimed.generation, error instanceof Error && /^(EXPLORER_[A-Z_]+|SNAPSHOT_[A-Z_]+|GIT_OBJECT_UNAVAILABLE)$/.test(error.message) ? error.message : 'EXPLORER_FAILED');
         }
       }

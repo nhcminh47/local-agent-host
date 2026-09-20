@@ -38,6 +38,13 @@ The Windows process spike uses `taskkill /T /F` on its own disposable fixture. m
 
 ## Documents
 
+- [Contributor and agent guide](AGENTS.md)
+- [Current project architecture](docs/architecture.md)
+- [Spec Kit development workflow](docs/development-workflow.md)
+- [Project memories](docs/memories/README.md)
+- [Source structure and refactor validation](docs/source-structure.md)
+- [M0 Spec Kit documentation](specs/002-m0-foundation/spec.md)
+- [M1 Spec Kit documentation](specs/003-m1-task-backbone/spec.md)
 - [Technical plan](docs/technical-plan.md)
 - [M0 evidence and remaining gates](docs/m0-status.md)
 - [M1 task-backbone status](docs/m1-status.md)

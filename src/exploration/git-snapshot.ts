@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { devNull } from 'node:os';
@@ -16,17 +17,17 @@ async function git(executable: string, root: string, args: string[], maxBytes: n
   return new Promise((resolve, reject) => {
     let child;
     try { child = spawn(executable, ['--no-replace-objects', '--no-lazy-fetch', '-c', 'core.fsmonitor=false', '-C', root, ...args], { env, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }); }
-    catch { reject(new Error('GIT_UNAVAILABLE')); return; }
+    catch { reject(new Error(ERROR_CODES.GIT_UNAVAILABLE)); return; }
     const chunks: Buffer[] = [];
     let bytes = 0;
     let failure: string | undefined;
     const timeout = setTimeout(() => { failure = 'GIT_TIMEOUT'; child.kill(); }, 5000);
     child.stdout.on('data', (chunk: Buffer) => {
       bytes += chunk.length;
-      if (bytes > maxBytes) { failure = 'SNAPSHOT_LIMIT'; child.kill(); }
+      if (bytes > maxBytes) { failure = ERROR_CODES.SNAPSHOT_LIMIT; child.kill(); }
       else chunks.push(chunk);
     });
-    child.once('error', () => { failure = 'GIT_UNAVAILABLE'; });
+    child.once('error', () => { failure = ERROR_CODES.GIT_UNAVAILABLE; });
     child.once('close', code => {
       clearTimeout(timeout);
       if (failure || code !== 0) reject(new Error(failure ?? 'GIT_OBJECT_UNAVAILABLE'));
@@ -57,30 +58,30 @@ export class GitSnapshotTools extends ReadTools {
 
   static async capture(repos: RepoRegistry, repoId: string, baseRef = 'HEAD', secrets = new SecretFilter(), rawScope?: PathScopeValue) {
     const scope = rawScope === undefined ? undefined : PathScope.parse(rawScope);
-    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(baseRef) || baseRef.includes('..')) throw new Error('INVALID_BASE_REF');
+    if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(baseRef) || baseRef.includes('..')) throw new Error(ERROR_CODES.INVALID_BASE_REF);
     const root = repos.root(repoId);
     const executable = await resolveExecutable('git');
-    if (!executable) throw new Error('GIT_UNAVAILABLE');
+    if (!executable) throw new Error(ERROR_CODES.GIT_UNAVAILABLE);
     const top = (await git(executable, root, ['rev-parse', '--show-toplevel'], 16_384)).toString('utf8').trim();
-    if (await realpath(top) !== root) throw new Error('GIT_ROOT_REQUIRED');
+    if (await realpath(top) !== root) throw new Error(ERROR_CODES.GIT_ROOT_REQUIRED);
     const baseCommit = (await git(executable, root, ['rev-parse', '--verify', '--end-of-options', `${baseRef}^{commit}`], 128)).toString('utf8').trim();
-    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(baseCommit)) throw new Error('INVALID_COMMIT_ID');
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(baseCommit)) throw new Error(ERROR_CODES.INVALID_COMMIT_ID);
     const buffer = await git(executable, root, ['ls-tree', '-r', '-l', '-z', '--full-tree', baseCommit], 2 * 1024 * 1024);
     let listing: string;
     try { listing = new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
-    catch { throw new Error('INVALID_GIT_PATH_ENCODING'); }
+    catch { throw new Error(ERROR_CODES.INVALID_GIT_PATH_ENCODING); }
     const rows = listing.split('\0').filter(Boolean);
-    if (rows.length > 10_000) throw new Error('SNAPSHOT_LIMIT');
+    if (rows.length > 10_000) throw new Error(ERROR_CODES.SNAPSHOT_LIMIT);
     const entries = new Map<string, Entry>();
     let excluded = 0;
     for (const row of rows) {
       const match = /^(\d{6}) (blob|commit) ([a-f0-9]{40}|[a-f0-9]{64})\s+(\d+|-)\t([\s\S]+)$/.exec(row);
-      if (!match) throw new Error('INVALID_GIT_TREE');
+      if (!match) throw new Error(ERROR_CODES.INVALID_GIT_TREE);
       const [, mode, type, oid, sizeText, path] = match;
       if (!path || !oid || !['100644', '100755'].includes(mode ?? '') || type !== 'blob' || isDeniedPath(path) || secrets.filter(path).redacted) { excluded++; continue; }
       if (path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '.' || part === '..') || /[\x00-\x1f\x7f:]/.test(path)) { excluded++; continue; }
       const size = Number(sizeText);
-      if (!Number.isSafeInteger(size) || size < 0) throw new Error('INVALID_GIT_TREE');
+      if (!Number.isSafeInteger(size) || size < 0) throw new Error(ERROR_CODES.INVALID_GIT_TREE);
       if (size > 1_048_576) { excluded++; continue; }
       if (!inScope(path, scope)) { excluded++; continue; }
       entries.set(path, Object.freeze({ oid, size }));
@@ -91,7 +92,7 @@ export class GitSnapshotTools extends ReadTools {
   override async listFiles(repoId: string, cursor = '', limit = 200, signal = new AbortController().signal) {
     this.#checkRepo(repoId);
     signal.throwIfAborted();
-    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('INVALID_LIST_LIMIT');
+    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error(ERROR_CODES.INVALID_LIST_LIMIT);
     const paths = [...this.#entries.keys()].sort().filter(path => path > cursor);
     const files = paths.slice(0, Math.min(limit, 500));
     const truncated = paths.length > files.length;
@@ -100,17 +101,17 @@ export class GitSnapshotTools extends ReadTools {
 
   override async readSearchText(repoId: string, path: string) {
     this.#checkRepo(repoId);
-    if (!inScope(path, this.#scope)) throw new Error('SCOPE_PATH_DENIED');
+    if (!inScope(path, this.#scope)) throw new Error(ERROR_CODES.SCOPE_PATH_DENIED);
     const entry = this.#entries.get(path);
-    if (!entry) throw new Error('PATH_DENIED');
+    if (!entry) throw new Error(ERROR_CODES.PATH_DENIED);
     const content = await git(this.#executable, this.#root, ['cat-file', 'blob', entry.oid], 1_048_576);
     const algorithm = entry.oid.length === 40 ? 'sha1' : 'sha256';
     const actual = createHash(algorithm).update(`blob ${content.length}\0`).update(content).digest('hex');
-    if (content.length !== entry.size || actual !== entry.oid) throw new Error('SNAPSHOT_INTEGRITY_FAILED');
+    if (content.length !== entry.size || actual !== entry.oid) throw new Error(ERROR_CODES.SNAPSHOT_INTEGRITY_FAILED);
     return this.filterContent(content, path);
   }
 
   override get provenance() { return { baseCommit: this.metadata.baseCommit, snapshotId: this.metadata.snapshotId }; }
 
-  #checkRepo(repoId: string) { if (repoId !== this.#repoId) throw new Error('UNKNOWN_REPO'); }
+  #checkRepo(repoId: string) { if (repoId !== this.#repoId) throw new Error(ERROR_CODES.UNKNOWN_REPO); }
 }

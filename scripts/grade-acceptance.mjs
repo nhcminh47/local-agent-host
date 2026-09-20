@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluateAcceptanceCase, evaluateGatePair } from '../dist/src/m2/acceptance-grader.js';
+import { evaluateAcceptanceCase, evaluateGatePair } from '../dist/src/evaluation/acceptance-grader.js';
 
 const host = fileURLToPath(new URL('../', import.meta.url));
 const reportPath = process.env.ACCEPTANCE_REPORT;

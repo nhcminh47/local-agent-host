@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { CapabilityService } from './capability-service.js';
 import { ReadTools } from './read-tools.js';
 import { matchBuiltin, ripgrepMatcher } from './search-backends.js';
@@ -16,9 +17,9 @@ export class SearchService {
     try {
       return { schemaVersion: 1, status: 'completed', ...await searchFiles(this.tools, input, backend, backend === 'node' ? matchBuiltin : ripgrepMatcher(await this.capabilities.ripgrepExecutable()), signal) };
     } catch (error) {
-      if (error instanceof Error && error.message === 'RIPGREP_UNAVAILABLE') {
+      if (error instanceof Error && error.message === ERROR_CODES.RIPGREP_UNAVAILABLE) {
         this.capabilities.invalidate();
-        return { schemaVersion: 1, status: 'blocked', reason: 'MISSING_CAPABILITY', requiredAction: { capability: 'ripgrep', choices: ['install', 'use_builtin_fallback', 'cancel'] } };
+        return { schemaVersion: 1, status: 'blocked', reason: ERROR_CODES.MISSING_CAPABILITY, requiredAction: { capability: 'ripgrep', choices: ['install', 'use_builtin_fallback', 'cancel'] } };
       }
       throw error;
     }

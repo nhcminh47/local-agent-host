@@ -1,3 +1,5 @@
+import { hasErrorCode } from "../shared/errors.js";
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { z } from 'zod';
 import type { ReadTools } from './read-tools.js';
 import type { LineMatcher } from './search-backends.js';
@@ -11,7 +13,7 @@ export const SearchCodeInput = z.object({
 
 export async function searchFiles(tools: ReadTools, raw: unknown, backend: 'node' | 'ripgrep', matcher: LineMatcher, signal = new AbortController().signal) {
   const input = SearchCodeInput.parse(raw);
-  if (tools.secrets.filter(input.pattern).redacted) throw new Error('SENSITIVE_SEARCH_PATTERN');
+  if (tools.secrets.filter(input.pattern).redacted) throw new Error(ERROR_CODES.SENSITIVE_SEARCH_PATTERN);
   signal.throwIfAborted();
   const deadline = AbortSignal.timeout(4_000);
   const combined = AbortSignal.any([signal, deadline]);
@@ -28,7 +30,7 @@ export async function searchFiles(tools: ReadTools, raw: unknown, backend: 'node
       let file;
       try { file = await tools.readSearchText(input.repoId, path); }
       catch (error) {
-        if (error instanceof Error && ['PATH_DENIED', 'FILE_NOT_READABLE', 'BINARY_FILE', 'INVALID_UTF8'].includes(error.message) || ['ENOENT', 'EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) { skippedFiles++; continue; }
+        if (hasErrorCode(error, [ERROR_CODES.PATH_DENIED, ERROR_CODES.FILE_NOT_READABLE, ERROR_CODES.BINARY_FILE, ERROR_CODES.INVALID_UTF8]) || ['ENOENT', 'EACCES', 'EPERM'].includes((error as NodeJS.ErrnoException).code ?? '')) { skippedFiles++; continue; }
         throw error;
       }
       scannedBytes += file.bytes;
@@ -49,8 +51,8 @@ export async function searchFiles(tools: ReadTools, raw: unknown, backend: 'node
     if (!reason && listing.truncated) reason = 'FILE_LIMIT';
     if (!reason && skippedFiles) reason = 'SKIPPED_FILES';
   } catch (error) {
-    if (signal.aborted) throw new Error('SEARCH_CANCELLED');
-    if (deadline.aborted || error instanceof Error && ['SEARCH_TIMEOUT', 'SEARCH_OUTPUT_LIMIT', 'LIST_LIMIT'].includes(error.message)) reason = deadline.aborted ? 'TIME_LIMIT' : (error as Error).message;
+    if (signal.aborted) throw new Error(ERROR_CODES.SEARCH_CANCELLED);
+    if (deadline.aborted || hasErrorCode(error, ['SEARCH_TIMEOUT', 'SEARCH_OUTPUT_LIMIT', ERROR_CODES.LIST_LIMIT])) reason = deadline.aborted ? 'TIME_LIMIT' : (error as Error).message;
     else throw error;
   }
   signal.throwIfAborted();

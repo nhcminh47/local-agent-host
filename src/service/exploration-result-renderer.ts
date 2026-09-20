@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import type { FinishAnalysisValue } from '../domain/exploration-result.js';
 
 function citation(value: { path: string; startLine: number; endLine: number }) {
@@ -15,6 +16,6 @@ export function renderExplorationResult(value: FinishAnalysisValue) {
     return `- ${limitation.kind}${path}: ${limitation.description}${citations}`;
   });
   const summary = [`Findings`, ...findings, ...(limitations.length ? ['', 'Limitations', ...limitations] : [])].join('\n');
-  if (Buffer.byteLength(summary) > 6_000) throw new Error('EXPLORER_SUMMARY_LIMIT');
+  if (Buffer.byteLength(summary) > 6_000) throw new Error(ERROR_CODES.EXPLORER_SUMMARY_LIMIT);
   return summary;
 }

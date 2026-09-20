@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { spawn } from 'node:child_process';
 
 export type LineMatcher = (text: string, pattern: string, limit: number, signal: AbortSignal) => Promise<number[]>;
@@ -26,7 +27,7 @@ export function ripgrepMatcher(executable: string): LineMatcher {
       let bytes = 0;
       let failure: string | undefined;
       const stop = (code: string) => { failure ??= code; child.kill(); };
-      const abort = () => stop('SEARCH_CANCELLED');
+      const abort = () => stop(ERROR_CODES.SEARCH_CANCELLED);
       signal.addEventListener('abort', abort, { once: true });
       const timeout = setTimeout(() => stop('SEARCH_TIMEOUT'), 2_000);
       child.stdout.on('data', (chunk: Buffer) => {
@@ -38,12 +39,12 @@ export function ripgrepMatcher(executable: string): LineMatcher {
         // rg may stop reading after --max-count before the host finishes writing.
         if ((error as NodeJS.ErrnoException).code !== 'EPIPE') stop('SEARCH_INPUT_FAILED');
       });
-      child.once('error', () => { failure ??= 'RIPGREP_UNAVAILABLE'; });
+      child.once('error', () => { failure ??= ERROR_CODES.RIPGREP_UNAVAILABLE; });
       child.once('close', code => {
         clearTimeout(timeout);
         signal.removeEventListener('abort', abort);
         if (failure) reject(new Error(failure));
-        else if (code !== 0 && code !== 1) reject(new Error('RIPGREP_FAILED'));
+        else if (code !== 0 && code !== 1) reject(new Error(ERROR_CODES.RIPGREP_FAILED));
         else resolve(Buffer.concat(chunks).toString('utf8'));
       });
       if (signal.aborted) abort();
@@ -55,7 +56,7 @@ export function ripgrepMatcher(executable: string): LineMatcher {
       if (!row) continue;
       const match = /^(\d+):([\s\S]*)$/.exec(row);
       const line = Number(match?.[1]);
-      if (!match || !Number.isSafeInteger(line) || line <= (found.at(-1) ?? 0) || source[line - 1] !== match[2] || !source[line - 1]?.includes(pattern) || found.length >= limit) throw new Error('RIPGREP_INVALID_OUTPUT');
+      if (!match || !Number.isSafeInteger(line) || line <= (found.at(-1) ?? 0) || source[line - 1] !== match[2] || !source[line - 1]?.includes(pattern) || found.length >= limit) throw new Error(ERROR_CODES.RIPGREP_INVALID_OUTPUT);
       found.push(line);
     }
     return found;

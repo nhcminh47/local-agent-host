@@ -1,5 +1,13 @@
 # M0 — Kết quả bước đầu
 
+## Source refactor validation — 20 September 2026
+
+Observed on Windows with Node 22.23.2 and pnpm 11.7.0: strict check passed; 90/90 deterministic tests passed; M0 MCP SDK smoke and three-process cancellation smoke passed (128 ms termination). M1 fake-provider reconnect smoke also passed. M0 code now lives in `src/diagnostics/compatibility/`; launch configurations now use the canonical compiled path. See [source structure](source-structure.md) and the [M0 Spec Kit package](../specs/002-m0-foundation/spec.md).
+
+Assumptions and limitations: this refactor preserves existing behavior and prompt text. No live inference, native macOS or Cursor UI check was rerun. The dated evidence below remains historical; open platform and operational gates remain open.
+
+After removing all milestone-named source folders and forwarding launchers, the same Windows check, 90-test suite, MCP/process probes and M1 fake-provider smoke passed again. Process termination measured 117 ms. Diagnostic folders are now named `compatibility`, `task` and `exploration`.
+
 Ngày 17/09/2026. **M0 đã bắt đầu, chưa hoàn tất.** Project source ở `D:\Repo\local-agent-host`, Git branch `main`, chưa commit/push hoặc tạo remote. Chưa triển khai runtime production của M1.
 
 ## Đã hoàn thành trên Windows
@@ -90,3 +98,7 @@ Người dùng xác nhận Cursor ở Mac mini và không chia sẻ SSH do polic
 ## Bước tiếp theo
 
 Có thể tiếp tục model evaluation và crash-containment spike trên PC đã có Cursor. Chạy checklist Mac khi phù hợp để đóng các gate cross-platform/network, không cần SSH. M1 sẽ xây task contracts/queue/SQLite/bridge-daemon dựa trên các quyết định đã kiểm chứng.
+
+## 413 correction validation — 20 September 2026
+
+After the HTTP and conditional-status fixes plus the existing source reorganization, Windows Node 22.23.2 / pnpm 11.7.0 strict checking, 102/102 deterministic tests, MCP SDK compatibility and process disposal probes passed. Process disposal covered three fixture processes and measured 168 ms. This is deterministic Windows evidence only; no live provider, Cursor UI, native macOS or crash-supervision qualification was rerun.

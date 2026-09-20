@@ -1,0 +1,1 @@
+export const mcpResponse = (value: unknown, isError = false) => ({ ...(isError ? { isError: true } : {}), content: [{ type: 'text' as const, text: JSON.stringify(value) }], structuredContent: value as Record<string, unknown> });

@@ -3,7 +3,7 @@ import type { SecretFilter } from '../exploration/secret-filter.js';
 import { validateStructuredFindings, type EvidenceRange, type ObservedLine, type StructuredValidationIssue } from './citation-validation.js';
 import { renderExplorationResult } from './exploration-result-renderer.js';
 
-export const EXPLORER_PROMPT_CONTRACT_VERSION = 'm2-structured-findings-v31';
+export const EXPLORER_PROMPT_CONTRACT_VERSION = 'm2-structured-findings-v32';
 export const EXPLORER_RESULT_CONTRACT_VERSION = 2 as const;
 
 export type FinalizationContext = {

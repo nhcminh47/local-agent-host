@@ -10,7 +10,7 @@ const host = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(host + '/package.json');
 const { Client } = require('@modelcontextprotocol/client');
 const { StdioClientTransport } = require('@modelcontextprotocol/client/stdio');
-const { evaluateAcceptanceCase, evaluateGatePair } = await import('../dist/src/m2/acceptance-grader.js');
+const { evaluateAcceptanceCase, evaluateGatePair } = await import('../dist/src/evaluation/acceptance-grader.js');
 const { EXPLORER_PROMPT_CONTRACT_VERSION, EXPLORER_RESULT_CONTRACT_VERSION } = await import('../dist/src/service/exploration-result-finalizer.js');
 
 const repo = process.env.ACCEPTANCE_REPO ?? 'D:/Repo/novels-engine';
@@ -131,7 +131,7 @@ async function writeReport() {
 }
 
 try {
-  daemon = spawn(process.execPath, [host + '/dist/src/m1/daemon.js'], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  daemon = spawn(process.execPath, [host + '/dist/src/runtime/daemon.js'], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   daemon.stderr.on('data', chunk => {
     metricBuffer += chunk.toString();
     let end;
@@ -153,7 +153,7 @@ try {
     });
   });
   client = new Client({ name: 'real-repo-acceptance', version: '2.0.0' });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [host + '/dist/src/m1/mcp-server.js'], env: { ...env, LOCAL_AGENT_DAEMON_URL: `http://127.0.0.1:${port}` }, stderr: 'pipe' }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [host + '/dist/src/runtime/mcp-server.js'], env: { ...env, LOCAL_AGENT_DAEMON_URL: `http://127.0.0.1:${port}` }, stderr: 'pipe' }));
 
   for (const item of cases) {
     const metricStart = metrics.length;

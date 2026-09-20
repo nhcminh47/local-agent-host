@@ -1,3 +1,6 @@
+import { hasErrorCode } from "../shared/errors.js";
+import { ERROR_CODES } from '../constants/error-codes.js';
+import { httpOrigin } from '../utils/http-origin.js';
 import { z } from 'zod';
 
 export type ExplorerMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_calls?: Array<{ function: { name: string; arguments: unknown } }>; tool_name?: string };
@@ -15,9 +18,8 @@ export class OllamaExplorerProvider implements ExplorerProvider {
   get modelName() { return this.#options.model; }
   constructor(origin: string, token: string, options: unknown = {}, readonly observe?: (metric: InferenceMetric) => void) {
     this.#options = ExplorerOptions.parse(options);
-    this.#origin = new URL(origin);
-    if (!['http:', 'https:'].includes(this.#origin.protocol) || this.#origin.username || this.#origin.password || this.#origin.pathname !== '/' || this.#origin.search || this.#origin.hash) throw new Error('INVALID_OLLAMA_ORIGIN');
-    if (!token) throw new Error('OLLAMA_CREDENTIAL_UNAVAILABLE');
+    this.#origin = httpOrigin(origin, ERROR_CODES.INVALID_OLLAMA_ORIGIN);
+    if (!token) throw new Error(ERROR_CODES.OLLAMA_CREDENTIAL_UNAVAILABLE);
     this.#token = token;
   }
   async chat(messages: ExplorerMessage[], tools: unknown[], signal: AbortSignal): Promise<ExplorerMessage> {
@@ -26,8 +28,8 @@ export class OllamaExplorerProvider implements ExplorerProvider {
     } catch (error) {
       if (signal.aborted) { signal.throwIfAborted(); }
       // Do not propagate server bodies, malformed JSON or validation inputs.
-      if (error instanceof Error && ['EXPLORER_HTTP_FAILED', 'EXPLORER_RESPONSE_LIMIT', 'EXPLORER_INVALID_RESPONSE'].includes(error.message)) throw error;
-      throw new Error('EXPLORER_TRANSPORT_FAILED');
+      if (hasErrorCode(error, [ERROR_CODES.EXPLORER_HTTP_FAILED, ERROR_CODES.EXPLORER_RESPONSE_LIMIT, ERROR_CODES.EXPLORER_INVALID_RESPONSE])) throw error;
+      throw new Error(ERROR_CODES.EXPLORER_TRANSPORT_FAILED);
     }
   }
   async #chat(messages: ExplorerMessage[], tools: unknown[], signal: AbortSignal): Promise<ExplorerMessage> {
@@ -38,13 +40,13 @@ export class OllamaExplorerProvider implements ExplorerProvider {
     });
     if (!response.ok || !response.body) {
       await response.body?.cancel().catch(() => {});
-      throw new Error('EXPLORER_HTTP_FAILED');
+      throw new Error(ERROR_CODES.EXPLORER_HTTP_FAILED);
     }
     const chunks: Uint8Array[] = [];
     let bytes = 0;
     for await (const chunk of response.body) {
       bytes += chunk.length;
-      if (bytes > 128 * 1024) throw new Error('EXPLORER_RESPONSE_LIMIT');
+      if (bytes > 128 * 1024) throw new Error(ERROR_CODES.EXPLORER_RESPONSE_LIMIT);
       chunks.push(chunk);
     }
     let parsed: z.infer<typeof Response>['message'];
@@ -53,7 +55,7 @@ export class OllamaExplorerProvider implements ExplorerProvider {
       const body = JSON.parse(text);
       this.observe?.({ model: this.modelName, context: this.#options.num_ctx, outputLimit: this.#options.num_predict, promptTokens: count(body?.prompt_eval_count), generatedTokens: count(body?.eval_count), doneReason: body?.done_reason === undefined ? null : body.done_reason === 'stop' || body.done_reason === 'length' ? body.done_reason : 'other', wallMs: Math.round(performance.now() - started), messageBytes: Buffer.byteLength(JSON.stringify(messages)), toolSchemaBytes: Buffer.byteLength(JSON.stringify(tools)) });
       parsed = Response.parse(body).message;
-    } catch { throw new Error('EXPLORER_INVALID_RESPONSE'); }
+    } catch { throw new Error(ERROR_CODES.EXPLORER_INVALID_RESPONSE); }
     return { role: 'assistant', content: parsed.content, ...(parsed.tool_calls ? { tool_calls: parsed.tool_calls } : {}) };
   }
 }

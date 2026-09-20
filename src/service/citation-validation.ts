@@ -1,4 +1,5 @@
 import { FinishAnalysisInput, type FindingCitationValue, type FinishAnalysisValue } from '../domain/exploration-result.js';
+import { validateStatusBranches } from './status-branch-validation.js';
 
 export type EvidenceRange = { path: string; startLine: number; endLine: number };
 export type ObservedLine = { path: string; line: number; text: string };
@@ -236,6 +237,8 @@ export function validateStructuredFindings(
       }
     }
     if (!visibleCitations.length) continue;
+    issues.push(...validateStatusBranches(finding.statement, visibleCitations, observedLines)
+      .map(issue => ({ ...issue, path: `${prefix}.statement` })));
     const texts = visibleCitations.map(citation => citationText(citation, observedLines)!);
     const excerpt = texts.every((text): text is string => text !== null) ? texts.join('\n') : '';
     const exactValues = deriveExactValues(visibleCitations, observedLines);

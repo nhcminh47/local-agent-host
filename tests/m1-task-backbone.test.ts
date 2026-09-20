@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { AnalyzeRepoInput } from '../src/domain/task-contracts.js';
 import { FakeTaskService } from '../src/service/fake-task-service.js';
 import { IdempotencyConflict, InvalidTransition, QueueFull, StaleLease, TaskStore } from '../src/store/task-store.js';
-import { DaemonClient } from '../src/m1/ipc-client.js';
+import { DaemonClient } from '../src/runtime/ipc-client.js';
 
 const request = (requestKey = 'request-1') => AnalyzeRepoInput.parse({
   schemaVersion: 1,

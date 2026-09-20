@@ -1,3 +1,6 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
+import { httpOrigin } from '../utils/http-origin.js';
+import { ANALYSIS_SYSTEM_PROMPT } from '../prompts/analysis.js';
 import { z } from 'zod';
 import type { AnalyzeRepoRequest } from '../domain/task-contracts.js';
 
@@ -26,10 +29,9 @@ export class OllamaAnalysisProvider {
   readonly #model: string;
 
   constructor(origin: string, token: string, model = 'qwen3.5:latest') {
-    this.#origin = new URL(origin);
-    if (!['http:', 'https:'].includes(this.#origin.protocol) || this.#origin.username || this.#origin.password || this.#origin.pathname !== '/' || this.#origin.search || this.#origin.hash) throw new Error('INVALID_OLLAMA_ORIGIN');
-    if (!token) throw new Error('OLLAMA_CREDENTIAL_UNAVAILABLE');
-    if (!['qwen3.5:latest', 'qwen3:8b', 'gpt-oss:20b'].includes(model)) throw new Error('MODEL_NOT_ALLOWED');
+    this.#origin = httpOrigin(origin, ERROR_CODES.INVALID_OLLAMA_ORIGIN);
+    if (!token) throw new Error(ERROR_CODES.OLLAMA_CREDENTIAL_UNAVAILABLE);
+    if (!['qwen3.5:latest', 'qwen3:8b', 'gpt-oss:20b'].includes(model)) throw new Error(ERROR_CODES.MODEL_NOT_ALLOWED);
     this.#token = token;
     this.#model = model;
   }
@@ -46,7 +48,7 @@ export class OllamaAnalysisProvider {
         think: false,
         options: { num_ctx: 8192, num_predict: 160, temperature: 0 },
         messages: [
-          { role: 'system', content: 'You are an M1 connectivity worker. No repository content is available. Reply in one concise sentence confirming the requested analysis was admitted, and do not claim you inspected files.' },
+          { role: 'system', content: ANALYSIS_SYSTEM_PROMPT },
           { role: 'user', content: `Objective: ${request.objective}\nQuestion: ${request.question}` },
         ],
       }),

@@ -23,7 +23,7 @@ const finish = (overrides: Record<string, unknown> = {}): ExplorerMessage => cal
 const answer = (): ExplorerMessage => finish();
 const input = (requestKey = 'explore') => AnalyzeRepoInput.parse({ schemaVersion: 1, repoId: 'fixture', requestKey, baseRef: 'HEAD', objective: 'Read the fixture', question: 'What is VALUE?' });
 
-async function fixture(run: (root: string, service: SnapshotTaskService, capabilities: CapabilityService) => Promise<void>) {
+async function fixture(run: (root: string, service: SnapshotTaskService, capabilities: CapabilityService) => Promise<void>, statusFixture = false) {
   const root = await mkdtemp(join(tmpdir(), 'agent-explorer-'));
   const git = await resolveExecutable('git');
   assert(git);
@@ -34,7 +34,8 @@ async function fixture(run: (root: string, service: SnapshotTaskService, capabil
   try {
     await command('init');
     await writeFile(join(root, 'facts.txt'), 'VALUE = 731\npassword = fixture-secret-canary\n');
-    await command('add', 'facts.txt'); await command('commit', '-m', 'fixture');
+    if (statusFixture) await writeFile(join(root, 'status.ts'), 'const status = error.statusCode === 413 ? 413 : 500;\nreturn reply.code(status).send(body);\n');
+    await command('add', 'facts.txt', ...(statusFixture ? ['status.ts'] : [])); await command('commit', '-m', 'fixture');
     const repos = new RepoRegistry(); await repos.register('fixture', root);
     await run(root, new SnapshotTaskService(store, repos), capabilities);
   } finally { capabilities.close(); store.close(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 }); }
@@ -309,3 +310,31 @@ test('EOF and repeated reads return guidance without duplicating evidence', asyn
   const task = service.store.get(admitted.task.id);
   assert.equal(task.status, 'completed'); assert.equal(JSON.parse(task.resultJson!).evidence.length, 1);
 }));
+
+test('conditional status claims receive one bounded repair and repeated overgeneralization is never published', async () => fixture(async (_root, service, capabilities) => {
+  for (const repair of [true, false]) {
+    const admitted = await service.submit({ ...input(`status-${repair}`), question: 'Explain failure status codes.' });
+    const completion = (statement: string) => call('finish_analysis', {
+      findings: [{ id: 'status', statement, basis: 'direct_observation', citations: [{ path: 'status.ts', startLine: 1, endLine: 2 }] }], limitations: [],
+    });
+    const bad = completion('413 for validation errors and 500 for other errors.');
+    const replies = [call('read_file', { path: 'status.ts' }), bad,
+      repair ? completion('The handler selects its status with `error.statusCode === 413 ? 413 : 500`.') : bad];
+    let calls = 0;
+    await new ExplorerRunner(service, capabilities, { async chat(messages) {
+      calls++;
+      if (calls === 3) assert(messages.some(message => message.content.includes('STATUS_BRANCH_CONTEXT_REQUIRED:')));
+      return replies.shift()!;
+    } }).tick();
+    const task = service.store.get(admitted.task.id);
+    assert.equal(calls, 3);
+    assert.equal(task.status, repair ? 'completed' : 'failed');
+    assert(!task.resultJson!.includes('413 for validation errors'));
+    if (repair) {
+      const result = JSON.parse(task.resultJson!);
+      assert.equal(result.promptContractVersion, 'm2-structured-findings-v32');
+      assert.equal(result.validation.semanticVerification, 'not_performed');
+      assert.equal(result.metrics.modelTurns, 3);
+    } else assert.equal(JSON.parse(task.resultJson!).error, 'EXPLORER_INVALID_COMPLETION');
+  }
+}, true));

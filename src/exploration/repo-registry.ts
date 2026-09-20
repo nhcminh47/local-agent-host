@@ -1,19 +1,20 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 
-export class UnknownRepo extends Error { constructor() { super('UNKNOWN_REPO'); } }
-export class PathDenied extends Error { constructor() { super('PATH_DENIED'); } }
+export class UnknownRepo extends Error { constructor() { super(ERROR_CODES.UNKNOWN_REPO); } }
+export class PathDenied extends Error { constructor() { super(ERROR_CODES.PATH_DENIED); } }
 
 export class RepoRegistry {
   readonly #roots = new Map<string, string>();
   readonly #idsByRoot = new Map<string, string>();
 
   async register(repoId: string, root: string): Promise<string> {
-    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(repoId)) throw new Error('INVALID_REPO_ID');
+    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(repoId)) throw new Error(ERROR_CODES.INVALID_REPO_ID);
     const canonical = await realpath(resolve(root));
-    if (!(await stat(canonical)).isDirectory()) throw new Error('REPO_NOT_DIRECTORY');
+    if (!(await stat(canonical)).isDirectory()) throw new Error(ERROR_CODES.REPO_NOT_DIRECTORY);
     const existing = this.#idsByRoot.get(canonical.toLowerCase());
-    if (existing && existing !== repoId) throw new Error('DUPLICATE_REPO_ROOT');
+    if (existing && existing !== repoId) throw new Error(ERROR_CODES.DUPLICATE_REPO_ROOT);
     this.#roots.set(repoId, canonical);
     this.#idsByRoot.set(canonical.toLowerCase(), repoId);
     return canonical;

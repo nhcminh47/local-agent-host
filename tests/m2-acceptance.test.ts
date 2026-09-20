@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluateAcceptanceCase, evaluateGatePair, type CaseRubric, type GateRun } from '../src/m2/acceptance-grader.js';
+import { evaluateAcceptanceCase, evaluateGatePair, type CaseRubric, type GateRun } from '../src/evaluation/acceptance-grader.js';
 
 const rubric: CaseRubric = {
   caseId: 'fixture',

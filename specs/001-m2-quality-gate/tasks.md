@@ -144,3 +144,22 @@ Qualification note (19 September 2026): reviewed run `m2-t33-20260919-a` accepte
 4. Upgrade the evaluator and preservation fingerprint before qualification.
 5. Freeze once, run twice, and accept only two complete 5/5 reviewed suites.
 6. Validate native Cursor/macOS topology separately before full M2 closure.
+
+## Live rerun — 20 September 2026
+
+- [x] T037 Refresh pinned-toolchain check, tests and MCP smoke; run the frozen suite through `scripts/acceptance.mjs` with a unique report id.
+- [x] T038 Inspect results and review provenance; run an unchanged confirmation only if run A meets acceptance prerequisites. Record failures or pending human review without weakening `src/evaluation/acceptance-grader.ts`.
+- [x] T039 Publish sanitized evidence in `docs/m2-live-rerun-2026-09-20.md`, update `docs/m2-status.md` and index a dated memory; verify documentation links and whitespace.
+
+Rerun outcome: 5/5 runtime completions, 4/5 agent rubric acceptance, 25/25 preservation checks. Health overgeneralized the 413 branch. Confirmation was correctly skipped; human review remains unverified. See the dated report for provenance and dirty-tree identity limitations.
+
+Order: T037 → T038 → T039. Scope analysis: these tasks reuse FR-013–FR-020 and add no capability or contract changes. Earlier T034–T036 checkboxes describe the original failed attempt; the later v31 pair is separately documented in the status report.
+
+## Conditional status claims correction
+
+- [x] T040 [US1] Add the observed conditional-status guard and integrate it in src/service/citation-validation.ts (FR-021).
+- [x] T041 [US1] Update system/repair guidance in src/prompts/explorer.ts and explorer-loop.ts; version the prompt contract v32.
+- [x] T042 [US2] Add validator fixtures and bounded-repair explorer regressions; run pinned check/test and deterministic M2 MCP smoke.
+- [x] T043 [US3] Record the narrow guard, qualification boundary and observed checks in architecture, source map, M2 status/runbook and indexed memory.
+
+Order: T040 -> T041 -> T042 -> T043. Pre-implementation analysis: FR-021 maps to guard, feedback and regressions. No schema, budget, scope or capability expansion. This lexical guard does not satisfy FR-012 human semantic review or FR-016 two-run qualification. Existing 413 live failure remains historical evidence.

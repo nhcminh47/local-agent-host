@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import Database from 'better-sqlite3';
 import { z } from 'zod';
 import { CapabilityRegistry } from './capabilities.js';
@@ -27,7 +28,7 @@ export class CapabilityService {
   invalidate() { this.#registry.clear(); }
   async ripgrepExecutable() {
     const capability = await this.#registry.ripgrep(this.executable);
-    if (capability.status !== 'available') throw new Error('RIPGREP_UNAVAILABLE');
+    if (capability.status !== 'available') throw new Error(ERROR_CODES.RIPGREP_UNAVAILABLE);
     return capability.executable;
   }
 
@@ -37,7 +38,7 @@ export class CapabilityService {
     if (preference) return { schemaVersion: 1, capability: 'ripgrep', status: 'available', backend: 'node', source: 'persisted_decision' };
     const capability = await this.#registry.ripgrep(this.executable);
     if (capability.status === 'available') return { schemaVersion: 1, capability: 'ripgrep', status: 'available', backend: 'ripgrep', version: capability.version };
-    return { schemaVersion: 1, capability: 'ripgrep', status: 'blocked', reason: 'MISSING_CAPABILITY', requiredAction: { capability: 'ripgrep', choices: capability.choices } };
+    return { schemaVersion: 1, capability: 'ripgrep', status: 'blocked', reason: ERROR_CODES.MISSING_CAPABILITY, requiredAction: { capability: 'ripgrep', choices: capability.choices } };
   }
 
   async resolve(raw: unknown) {

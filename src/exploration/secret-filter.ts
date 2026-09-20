@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 const marker = '[REDACTED]';
 
 // Defense in depth, not a complete credential detector. Values are host-provisioned
@@ -5,12 +6,12 @@ const marker = '[REDACTED]';
 export class SecretFilter {
   readonly #known: readonly string[];
   constructor(knownValues: readonly string[] = []) {
-    if (knownValues.length > 128 || knownValues.some(value => !value || value.length > 4096)) throw new Error('INVALID_SECRET_FILTER_CONFIG');
+    if (knownValues.length > 128 || knownValues.some(value => !value || value.length > 4096)) throw new Error(ERROR_CODES.INVALID_SECRET_FILTER_CONFIG);
     this.#known = [...new Set(knownValues)];
   }
 
   filter(text: string) {
-    if (Buffer.byteLength(text) > 2 * 1024 * 1024) throw new Error('SECRET_FILTER_INPUT_LIMIT');
+    if (Buffer.byteLength(text) > 2 * 1024 * 1024) throw new Error(ERROR_CODES.SECRET_FILTER_INPUT_LIMIT);
     const ranges: Array<[number, number]> = [];
     for (const value of this.#known) {
       for (let at = text.indexOf(value); at >= 0; at = text.indexOf(value, at + 1)) {
@@ -43,7 +44,7 @@ export class SecretFilter {
   }
 
   assertSafeInput(value: unknown): void {
-    if (typeof value === 'string' && this.filter(value).redacted) throw new Error('SENSITIVE_INPUT');
+    if (typeof value === 'string' && this.filter(value).redacted) throw new Error(ERROR_CODES.SENSITIVE_INPUT);
     if (Array.isArray(value)) for (const item of value) this.assertSafeInput(item);
     else if (value !== null && typeof value === 'object') for (const [key, item] of Object.entries(value)) { this.assertSafeInput(key); this.assertSafeInput(item); }
   }
@@ -55,7 +56,7 @@ export class SecretFilter {
         || /\b(?:password|passwd|secret|client[_-]?secret|api[_-]?key|access[_-]?token|refresh[_-]?token|authorization)["']?\s*[:=]\s*\S/i.test(value)
         || /\bBearer\s+[A-Za-z0-9._~+\/-]{16,}/i.test(value)
         || /\b(?:sk-(?:proj-)?|gh[pousr]_|github_pat_)[A-Za-z0-9_-]{16,}/.test(value)
-        || /\b[a-z][a-z0-9+.-]*:\/\/[^\s/@:]+:[^\s/@]+@/i.test(value)) throw new Error('SENSITIVE_INPUT');
+        || /\b[a-z][a-z0-9+.-]*:\/\/[^\s/@:]+:[^\s/@]+@/i.test(value)) throw new Error(ERROR_CODES.SENSITIVE_INPUT);
       return;
     }
     if (Array.isArray(value)) for (const item of value) this.assertSafeCompletion(item);

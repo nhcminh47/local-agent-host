@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
 test('MCP explorer preserves snapshots and contains failure canaries across persistence and restart', { timeout: 40_000 }, async () => {
-  const { stdout } = await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../src/m2/explorer-mcp-smoke.js', import.meta.url))], { env: { ...process.env, M2_LIVE_OLLAMA: '0' }, windowsHide: true, timeout: 35_000, maxBuffer: 65_536 });
+  const { stdout } = await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../src/diagnostics/exploration/explorer-mcp-smoke.js', import.meta.url))], { env: { ...process.env, M2_LIVE_OLLAMA: '0' }, windowsHide: true, timeout: 35_000, maxBuffer: 65_536 });
   const result = JSON.parse(stdout.trim());
   assert.equal(result.status, 'passed');
   assert.equal(result.failureCases, 7);

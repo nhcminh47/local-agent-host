@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import Database from 'better-sqlite3';
 import { createHash, randomUUID } from 'node:crypto';
 import type { AnalyzeRepoRequest, TaskEvent, TaskRecord, TaskStatus } from '../domain/task-contracts.js';
@@ -5,11 +6,11 @@ import { SnapshotIdentity, type SnapshotRecord } from '../domain/snapshot-contra
 
 const terminal = new Set<TaskStatus>(['cancelled', 'completed', 'failed', 'budget_exceeded']);
 
-export class IdempotencyConflict extends Error { constructor() { super('IDEMPOTENCY_CONFLICT'); } }
-export class TaskNotFound extends Error { constructor() { super('TASK_NOT_FOUND'); } }
-export class InvalidTransition extends Error { constructor() { super('INVALID_TRANSITION'); } }
-export class QueueFull extends Error { constructor() { super('QUEUE_FULL'); } }
-export class StaleLease extends Error { constructor() { super('STALE_LEASE'); } }
+export class IdempotencyConflict extends Error { constructor() { super(ERROR_CODES.IDEMPOTENCY_CONFLICT); } }
+export class TaskNotFound extends Error { constructor() { super(ERROR_CODES.TASK_NOT_FOUND); } }
+export class InvalidTransition extends Error { constructor() { super(ERROR_CODES.INVALID_TRANSITION); } }
+export class QueueFull extends Error { constructor() { super(ERROR_CODES.QUEUE_FULL); } }
+export class StaleLease extends Error { constructor() { super(ERROR_CODES.STALE_LEASE); } }
 
 function hash(value: string) { return createHash('sha256').update(value).digest('hex'); }
 function now() { return new Date().toISOString(); }
@@ -19,7 +20,7 @@ export class TaskStore {
   readonly #queueCapacity: number;
 
   constructor(path: string, queueCapacity = 20) {
-    if (!Number.isInteger(queueCapacity) || queueCapacity < 1) throw new Error('INVALID_QUEUE_CAPACITY');
+    if (!Number.isInteger(queueCapacity) || queueCapacity < 1) throw new Error(ERROR_CODES.INVALID_QUEUE_CAPACITY);
     this.#queueCapacity = queueCapacity;
     this.#db = new Database(path);
     this.#db.pragma('journal_mode = WAL');
@@ -78,18 +79,18 @@ export class TaskStore {
   }
 
   reserveExplorerBudget(id: string, owner: string, generation: number, kind: 'turn' | 'tool', limit: number) {
-    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('INVALID_BUDGET');
+    if (!Number.isSafeInteger(limit) || limit < 1) throw new Error(ERROR_CODES.INVALID_BUDGET);
     const column = kind === 'turn' ? 'explorer_turns' : 'explorer_tools';
     const changed = this.#db.prepare(`UPDATE tasks SET ${column}=${column}+1 WHERE id=? AND status='running' AND lease_owner=? AND lease_generation=? AND ${column}<?`).run(id, owner, generation, limit);
     if (!changed.changes) {
       const task = this.get(id);
       if (task.status !== 'running' || task.leaseOwner !== owner || task.leaseGeneration !== generation) throw new StaleLease();
-      throw new Error(kind === 'turn' ? 'EXPLORER_TURN_LIMIT' : 'EXPLORER_TOOL_LIMIT');
+      throw new Error(kind === 'turn' ? ERROR_CODES.EXPLORER_TURN_LIMIT : ERROR_CODES.EXPLORER_TOOL_LIMIT);
     }
   }
 
   blockLeased(id: string, owner: string, generation: number, requiredAction: unknown) {
-    return this.#publishLeased(id, owner, generation, 'blocked', { schemaVersion: 1, outcome: 'blocked', error: 'MISSING_CAPABILITY', requiredAction }, 'task.blocked');
+    return this.#publishLeased(id, owner, generation, 'blocked', { schemaVersion: 1, outcome: 'blocked', error: ERROR_CODES.MISSING_CAPABILITY, requiredAction }, 'task.blocked');
   }
 
   budgetExceededLeased(id: string, owner: string, generation: number, error: string) {
@@ -101,7 +102,7 @@ export class TaskStore {
       const rows = this.#db.prepare("SELECT id,result_json FROM tasks WHERE status='blocked' AND deadline_at>?").all(now()) as Array<{ id: string; result_json: string }>;
       let count = 0;
       for (const row of rows) {
-        if (JSON.parse(row.result_json).error !== 'MISSING_CAPABILITY') continue;
+        if (JSON.parse(row.result_json).error !== ERROR_CODES.MISSING_CAPABILITY) continue;
         this.#db.prepare("UPDATE tasks SET status='queued',result_json=NULL,updated_at=? WHERE id=?").run(now(), row.id);
         this.#event(row.id, 'task.capability_resolved', { schemaVersion: 1 });
         count++;
@@ -115,7 +116,7 @@ export class TaskStore {
     const row = this.#db.prepare('SELECT identity_json FROM task_snapshots WHERE task_id=?').get(taskId) as { identity_json: string } | undefined;
     if (!row) return null;
     try { return SnapshotIdentity.parse(JSON.parse(row.identity_json)); }
-    catch { throw new Error('INVALID_PERSISTED_SNAPSHOT'); }
+    catch { throw new Error(ERROR_CODES.INVALID_PERSISTED_SNAPSHOT); }
   }
 
   submit(request: AnalyzeRepoRequest, snapshot?: SnapshotRecord): { task: TaskRecord; created: boolean } {
@@ -127,7 +128,7 @@ export class TaskStore {
       if (existing) {
         const task = this.#mapTask(existing);
         if (task.payloadHash !== payloadHash) throw new IdempotencyConflict();
-        if ((identity !== undefined) !== (this.snapshot(task.id) !== null)) throw new Error('SNAPSHOT_MODE_CONFLICT');
+        if ((identity !== undefined) !== (this.snapshot(task.id) !== null)) throw new Error(ERROR_CODES.SNAPSHOT_MODE_CONFLICT);
         return { task, created: false };
       }
       const active = Number((this.#db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE status NOT IN ('cancelled','completed','failed','budget_exceeded')").get() as { count: number }).count);
@@ -146,7 +147,7 @@ export class TaskStore {
   }
 
   claim(id: string, owner: string, leaseMs: number): { task: TaskRecord; generation: number } {
-    if (!owner || !Number.isInteger(leaseMs) || leaseMs < 100) throw new Error('INVALID_LEASE');
+    if (!owner || !Number.isInteger(leaseMs) || leaseMs < 100) throw new Error(ERROR_CODES.INVALID_LEASE);
     return this.#db.transaction(() => {
       const task = this.get(id);
       if (task.status !== 'queued') throw new InvalidTransition();
@@ -165,7 +166,7 @@ export class TaskStore {
   }
 
   renewLease(id: string, owner: string, generation: number, leaseMs: number): TaskRecord {
-    if (!Number.isInteger(leaseMs) || leaseMs < 100) throw new Error('INVALID_LEASE');
+    if (!Number.isInteger(leaseMs) || leaseMs < 100) throw new Error(ERROR_CODES.INVALID_LEASE);
     return this.#db.transaction(() => {
       const expiresAt = new Date(Date.now() + leaseMs).toISOString();
       const changed = this.#db.prepare('UPDATE tasks SET lease_expires_at=?, updated_at=? WHERE id=? AND status=? AND lease_owner=? AND lease_generation=?').run(expiresAt, now(), id, 'running', owner, generation);
@@ -176,7 +177,7 @@ export class TaskStore {
   }
 
   takeoverExpired(id: string, owner: string, leaseMs: number, observedAt = now()): { task: TaskRecord; generation: number } {
-    if (!owner || !Number.isInteger(leaseMs) || leaseMs < 100) throw new Error('INVALID_LEASE');
+    if (!owner || !Number.isInteger(leaseMs) || leaseMs < 100) throw new Error(ERROR_CODES.INVALID_LEASE);
     return this.#db.transaction(() => {
       const task = this.get(id);
       if (task.status !== 'running' || task.leaseExpiresAt === null || task.leaseExpiresAt > observedAt) throw new InvalidTransition();

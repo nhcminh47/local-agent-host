@@ -109,6 +109,10 @@ docs/
 
 ## Delivery Phases
 
+### Live rerun plan — 20 September 2026
+
+Use the existing acceptance and grading harnesses with Node 22.23.2 / pnpm 11.7.0. Refresh strict checking, deterministic tests and MCP smoke before live inference. Store unique raw reports under ignored `.local/`; compare published findings with frozen source and, where applicable, the previous reviewed claim set. Preserve review provenance and leave human review pending unless supported by existing identical reviewed evidence. Keep source and configuration unchanged between qualifying runs. Publish sanitized results in `docs/m2-live-rerun-2026-09-20.md`, update M2 status and add an indexed memory. Existing runtime ownership is `src/evaluation/` for grading and `src/diagnostics/exploration/` for smoke checks; the earlier layout above is historical.
+
 1. Define and test the structured completion contract.
 2. Add claim-level grounding and host-side rendering.
 3. Add deterministic regressions for the observed semantic failure classes.
@@ -123,3 +127,7 @@ docs/
 | Add a structured completion tool | Every published claim must be independently gradeable and renderable | More prompt guidance has already produced 0/5 fully accepted answers in the final rerun |
 | Retain human semantic review | Generic source-code semantics cannot be proven by citation or literal matching | Treating `ranges_verified` or exact literals as correctness reproduced accepted-looking false claims |
 | Require two unchanged qualification runs | Prior live outcomes varied materially between runs | A single 5/5 run would not establish stable behavior |
+
+## Conditional status claims correction plan — 20 September 2026
+
+Add src/service/status-branch-validation.ts for a deliberately narrow lexical guard over observed single-line const/let status assignments with two numeric HTTP branches. Require the exact full ternary expression as inline code plus a citation to its line for numeric claims tied to that assignment (direct citation or a response using that variable within three contiguous observed lines). Never derive semantics from labels, execute source, parse hidden lines, or claim general control-flow analysis. Integrate after citation normalization in citation-validation.ts so both initial completion and repair use the guard. Add prompt and targeted repair guidance in src/prompts/explorer.ts; bump the prompt contract to v32. Preserve existing tool/turn/deadline budgets and result schema 2. Add validator and scripted explorer regressions; run check/test and deterministic M2 MCP smoke. Live model improvement remains unverified until a separate frozen qualification run.

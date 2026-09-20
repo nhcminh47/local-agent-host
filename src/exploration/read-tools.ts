@@ -1,3 +1,4 @@
+import { ERROR_CODES } from '../constants/error-codes.js';
 import { createHash } from 'node:crypto';
 import { opendir, open } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
@@ -15,7 +16,7 @@ export class ReadTools {
   get provenance(): { baseCommit: string; snapshotId: string } | null { return null; }
 
   async readFile(repoId: string, repoPath: string, startLine = 1, endLine = startLine + 199) {
-    if (!Number.isSafeInteger(startLine) || !Number.isSafeInteger(endLine) || startLine < 1 || endLine < startLine) throw new Error('INVALID_LINE_RANGE');
+    if (!Number.isSafeInteger(startLine) || !Number.isSafeInteger(endLine) || startLine < 1 || endLine < startLine) throw new Error(ERROR_CODES.INVALID_LINE_RANGE);
     const file = await this.readSearchText(repoId, repoPath);
     const lines = file.text.split('\n');
     const first = Math.max(1, startLine);
@@ -30,10 +31,10 @@ export class ReadTools {
     let entries = 0;
     const walk = async (dir: string, depth = 0): Promise<void> => {
       signal.throwIfAborted();
-      if (depth > 64) throw new Error('LIST_LIMIT');
+      if (depth > 64) throw new Error(ERROR_CODES.LIST_LIMIT);
       for await (const entry of await opendir(dir)) {
         signal.throwIfAborted();
-        if (++entries > 20_000) throw new Error('LIST_LIMIT');
+        if (++entries > 20_000) throw new Error(ERROR_CODES.LIST_LIMIT);
         const rel = normalize(relative(root, join(dir, entry.name)));
         if (denied(rel) || this.secrets.filter(rel).redacted) continue;
         if (entry.isDirectory()) await walk(join(dir, entry.name), depth + 1);
@@ -53,13 +54,13 @@ export class ReadTools {
   }
 
   async readSearchText(repoId: string, repoPath: string) {
-    if (denied(repoPath) || this.secrets.filter(repoPath).redacted) throw new Error('PATH_DENIED');
+    if (denied(repoPath) || this.secrets.filter(repoPath).redacted) throw new Error(ERROR_CODES.PATH_DENIED);
     const resolved = await this.repos.resolveFile(repoId, repoPath);
-    if (denied(resolved.relativePath) || this.secrets.filter(resolved.relativePath).redacted) throw new Error('PATH_DENIED');
+    if (denied(resolved.relativePath) || this.secrets.filter(resolved.relativePath).redacted) throw new Error(ERROR_CODES.PATH_DENIED);
     const handle = await open(resolved.path, 'r');
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > 1_048_576) throw new Error('FILE_NOT_READABLE');
+      if (!info.isFile() || info.size > 1_048_576) throw new Error(ERROR_CODES.FILE_NOT_READABLE);
       // Read at most one byte beyond the limit, including files growing during read.
       const buffer = Buffer.alloc(1_048_577);
       let bytes = 0;
@@ -68,16 +69,16 @@ export class ReadTools {
         if (!read.bytesRead) break;
         bytes += read.bytesRead;
       }
-      if (bytes > 1_048_576) throw new Error('FILE_NOT_READABLE');
+      if (bytes > 1_048_576) throw new Error(ERROR_CODES.FILE_NOT_READABLE);
       return this.filterContent(buffer.subarray(0, bytes), resolved.relativePath);
     } finally { await handle.close(); }
   }
 
   protected filterContent(content: Buffer, path: string) {
-    if (content.includes(0)) throw new Error('BINARY_FILE');
+    if (content.includes(0)) throw new Error(ERROR_CODES.BINARY_FILE);
     let text: string;
     try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(content); }
-    catch { throw new Error('INVALID_UTF8'); }
+    catch { throw new Error(ERROR_CODES.INVALID_UTF8); }
     const filtered = this.secrets.filter(text);
     const safeText = filtered.text.replace(/\r\n/g, '\n');
     return { text: safeText, bytes: content.length, path, redacted: filtered.redacted, sha256: createHash('sha256').update(safeText).digest('hex') };
