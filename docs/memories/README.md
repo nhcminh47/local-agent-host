@@ -13,6 +13,11 @@ Read this index first, then only the entries relevant to the task. These records
 
 | Date | Record | Read when |
 | --- | --- | --- |
+| 2026-10-04 | [M2 context checkpoint](2026-10-04-m2-context-checkpoint.md) | Reviewing the M2.5 RepoMap slice, context prototype or M2.6 plan |
+| 2026-10-04 | [Readiness evidence coverage](2026-10-04-readiness-coverage.md) | Checking the bounded readiness correction, latest candidate and agent-reviewed gaps |
+| 2026-10-04 | [Windows v32 evidence and Cursor client observation](2026-10-04-m2-windows-v32-evidence.md) | Reviewing current M2 Windows quality attempts or the scope of the Cursor UI result |
+| 2026-09-26 | [Host bootstrap implementation](2026-09-26-host-bootstrap-implementation.md) | Inspecting user-local setup, workspace trust implementation or remaining qualification |
+| 2026-09-25 | [Host bootstrap planning](2026-09-25-host-bootstrap-plan.md) | Planning user-local setup, workspace trust or v1 request migration |
 | 2026-09-20 | [413 corrections](2026-09-20-413-corrections.md) | Debugging oversized IPC bodies, conditional status claims or v32 qualification |
 | 2026-09-20 | [M2 live rerun](2026-09-20-m2-live-rerun.md) | Checking current live evidence, the health status-code defect or review provenance |
 | 2026-09-20 | [Project guidance and architecture](2026-09-20-project-guidance.md) | Starting a task, changing conventions, using Spec Kit or recording a memory |

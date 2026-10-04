@@ -1,5 +1,9 @@
 # M0 — Kết quả bước đầu
 
+## Host bootstrap compatibility regression — 26 September 2026
+
+On Windows with Node 22.23.2 and pnpm 11.7.0, `pnpm spike:mcp` passed SDK initialization/discovery/call/input rejection and the final `pnpm spike:process` rerun terminated three fixtures in 177 ms. These checks do not qualify native Cursor or macOS behavior.
+
 ## Source refactor validation — 20 September 2026
 
 Observed on Windows with Node 22.23.2 and pnpm 11.7.0: strict check passed; 90/90 deterministic tests passed; M0 MCP SDK smoke and three-process cancellation smoke passed (128 ms termination). M1 fake-provider reconnect smoke also passed. M0 code now lives in `src/diagnostics/compatibility/`; launch configurations now use the canonical compiled path. See [source structure](source-structure.md) and the [M0 Spec Kit package](../specs/002-m0-foundation/spec.md).

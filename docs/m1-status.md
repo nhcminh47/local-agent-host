@@ -1,5 +1,9 @@
 # M1 — Task backbone status
 
+## Host bootstrap and trust regression — 26 September 2026
+
+On Windows with Node 22.23.2 and pnpm 11.7.0, `pnpm m1:smoke` passed fake-provider authentication, bridge disconnect/reconnect, long polling and idempotency. The daemon and bridge now load user-local configuration/bridge credentials when explicit developer overrides are absent. Management routes require a distinct credential and are not MCP tools. Native Cursor and macOS remain unverified.
+
 Started 18 September 2026. The initial M1 slice used a fake provider; the later opt-in Ollama connectivity provider is described below. Neither M1 provider reads or modifies repository content. M2 subsequently extends the shared daemon with snapshot exploration.
 
 ## Source refactor validation — 20 September 2026

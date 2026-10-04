@@ -13,6 +13,8 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm build && node --test dist/tests/*.test.js",
     "doctor": "node dist/src/diagnostics/compatibility/doctor.js",
+    "bootstrap": "pnpm build && node dist/src/runtime/bootstrap-cli.js",
+    "host": "node dist/src/runtime/host-cli.js",
     "spike:mcp": "node dist/src/diagnostics/compatibility/mcp-smoke.js",
     "spike:process": "node dist/src/diagnostics/compatibility/process-smoke.js",
     "spike:ollama": "node dist/src/diagnostics/compatibility/ollama-smoke.js",

@@ -5,6 +5,7 @@ import { FinishAnalysisInput, FinishAnalysisResult } from '../src/domain/explora
 import { SecretFilter } from '../src/exploration/secret-filter.js';
 import { validateStructuredFindings } from '../src/service/citation-validation.js';
 import { finalizeExplorationResult } from '../src/service/exploration-result-finalizer.js';
+import { enrichObservedOperations } from '../src/service/exploration-coverage.js';
 
 const observed = [
   { path: 'package.json', line: 1, text: '{"dependencies":{"better-sqlite3":"12.2.0"},' },
@@ -134,4 +135,34 @@ test('finalization is atomic, filtered and renders only validated structured fie
   assert.match(completed.result.summary, /Observed:/);
   assert.equal(completed.result.validation.semanticVerification, 'not_performed');
   assert.equal(finalizeExplorationResult({ ...valid, findings: [{ ...valid.findings[0], statement: 'fixture-private' }] }, context).success, false);
+});
+
+test('readiness questions retain nearby observed probe operations without widening unrelated answers', () => {
+  const path = 'src/db/database.ts';
+  const lines = [
+    { path, line: 18, text: "throw new Error('Required SQLite connection settings could not be enabled');" },
+    { path, line: 29, text: 'validateMigrations(database);' },
+    { path, line: 30, text: "const result = database.prepare('SELECT 1 AS value').get();" },
+  ];
+  const completed = finalizeExplorationResult({
+    findings: [{ id: 'settings-error', statement: 'The configuration guard throws an error.', basis: 'direct_observation', citations: [{ path, startLine: 18, endLine: 18 }] }],
+    limitations: [],
+  }, {
+    observedLines: lines,
+    unavailablePaths: new Map(),
+    secrets: new SecretFilter([]),
+    evidence: [{ path, startLine: 18, endLine: 30 }],
+    snapshot: { baseCommit: 'a'.repeat(40), snapshotId: 'b'.repeat(64), source: 'committed-tree', excludesWorkingTree: true, eligibleFiles: 1, excludedEntries: 0 },
+    provider: 'fixture', model: 'fixture-model', metrics: { modelTurns: 1, toolCalls: 1, wallMs: 1 },
+  });
+  assert(completed.success);
+  const readiness = enrichObservedOperations(completed.result, lines, 'Explain readiness checks.');
+  const exactValues = readiness.findings.flatMap(finding => finding.exactValues.map(value => value.value));
+  assert(exactValues.includes('validateMigrations'));
+  assert(exactValues.includes('SELECT 1 AS value'));
+  assert(readiness.findings.some(finding => finding.citations.some(citation => citation.startLine === 29)));
+  assert(readiness.findings.some(finding => finding.citations.some(citation => citation.startLine === 30)));
+  const unrelated = enrichObservedOperations(completed.result, lines, 'Explain connection settings.');
+  assert(unrelated.findings.every(finding => finding.citations.every(citation => citation.startLine === 18)));
+  assert.equal(unrelated.findings.flatMap(finding => finding.exactValues).some(value => value.value === 'SELECT 1 AS value'), false);
 });

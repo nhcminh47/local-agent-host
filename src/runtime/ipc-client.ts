@@ -3,6 +3,10 @@ import { z } from 'zod';
 
 const IpcEnvelope = z.object({ ok: z.boolean(), value: z.unknown().optional(), error: z.string().optional() }).strict();
 
+export class DaemonRequestError extends Error {
+  constructor(code: string, readonly requiredAction?: unknown) { super(code); }
+}
+
 export class DaemonClient {
   readonly #origin: URL;
   readonly #token: string;
@@ -12,10 +16,10 @@ export class DaemonClient {
     if (token.length < 32) throw new Error(ERROR_CODES.INVALID_DAEMON_TOKEN);
     this.#token = token;
   }
-  async call(path: 'submit' | 'get' | 'cancel' | 'check-capability' | 'resolve-capability', body: unknown): Promise<unknown> {
+  async call(path: 'submit' | 'get' | 'cancel' | 'check-capability' | 'resolve-capability' | 'workspace-select' | 'workspace-grant' | 'workspace-list' | 'workspace-revoke' | 'workspace-deny', body: unknown): Promise<unknown> {
     const response = await fetch(new URL(`/v1/${path}`, this.#origin), { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(25_000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.#token}` }, body: JSON.stringify(body) });
     const envelope = IpcEnvelope.parse(await response.json());
-    if (!response.ok || !envelope.ok) throw new Error(envelope.error ?? 'DAEMON_ERROR');
+    if (!response.ok || !envelope.ok) throw new DaemonRequestError(envelope.error ?? 'DAEMON_ERROR', envelope.value);
     return envelope.value;
   }
 }

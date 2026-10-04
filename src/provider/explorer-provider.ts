@@ -2,9 +2,9 @@ import { hasErrorCode } from "../shared/errors.js";
 import { ERROR_CODES } from '../constants/error-codes.js';
 import { httpOrigin } from '../utils/http-origin.js';
 import { z } from 'zod';
+import type { ExplorerMessage, ExplorerProvider } from './inference-contract.js';
 
-export type ExplorerMessage = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_calls?: Array<{ function: { name: string; arguments: unknown } }>; tool_name?: string };
-export interface ExplorerProvider { readonly modelName?: string; chat(messages: ExplorerMessage[], tools: unknown[], signal: AbortSignal): Promise<ExplorerMessage> }
+export type { ExplorerMessage, ExplorerProvider } from './inference-contract.js';
 
 const Response = z.object({ message: z.object({ role: z.literal('assistant'), content: z.string().max(16_000), tool_calls: z.array(z.object({ function: z.object({ name: z.string().max(64), arguments: z.unknown() }) })).max(4).optional() }) });
 export const ExplorerOptions = z.object({ model: z.enum(['qwen3:8b', 'gpt-oss:20b', 'qwen3.5:latest']).default('qwen3:8b'), num_ctx: z.union([z.literal(8192), z.literal(16384)]).default(8192), num_predict: z.union([z.literal(512), z.literal(2048)]).default(512) }).strict();
@@ -19,7 +19,7 @@ export class OllamaExplorerProvider implements ExplorerProvider {
   constructor(origin: string, token: string, options: unknown = {}, readonly observe?: (metric: InferenceMetric) => void) {
     this.#options = ExplorerOptions.parse(options);
     this.#origin = httpOrigin(origin, ERROR_CODES.INVALID_OLLAMA_ORIGIN);
-    if (!token) throw new Error(ERROR_CODES.OLLAMA_CREDENTIAL_UNAVAILABLE);
+    if (!token && !['127.0.0.1', 'localhost', '[::1]'].includes(this.#origin.hostname)) throw new Error(ERROR_CODES.OLLAMA_CREDENTIAL_UNAVAILABLE);
     this.#token = token;
   }
   async chat(messages: ExplorerMessage[], tools: unknown[], signal: AbortSignal): Promise<ExplorerMessage> {
@@ -35,7 +35,7 @@ export class OllamaExplorerProvider implements ExplorerProvider {
   async #chat(messages: ExplorerMessage[], tools: unknown[], signal: AbortSignal): Promise<ExplorerMessage> {
     const started = performance.now();
     const response = await fetch(new URL('/api/chat', this.#origin), { method: 'POST', redirect: 'error', signal,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.#token}` },
+      headers: { 'Content-Type': 'application/json', ...(this.#token ? { Authorization: `Bearer ${this.#token}` } : {}) },
       body: JSON.stringify({ model: this.modelName, messages, tools, stream: false, think: this.modelName === 'gpt-oss:20b' ? 'low' : false, keep_alive: '5m', options: { num_ctx: this.#options.num_ctx, num_predict: this.#options.num_predict, temperature: 0 } }),
     });
     if (!response.ok || !response.body) {

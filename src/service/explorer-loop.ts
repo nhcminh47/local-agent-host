@@ -5,13 +5,16 @@ import { coverageTerms, coverageChecklist, uncitedObservedRanges, retainedFindin
 import { z } from 'zod';
 import type { AnalyzeRepoRequest } from '../domain/task-contracts.js';
 import type { GitSnapshotTools } from '../exploration/git-snapshot.js';
+import { buildRepoMap } from '../exploration/repo-map.js';
 import { SearchService } from '../exploration/search-service.js';
 import type { CapabilityService } from '../exploration/capability-service.js';
-import type { ExplorerMessage, ExplorerProvider } from '../provider/explorer-provider.js';
+import type { ExplorerMessage, ExplorerProvider } from '../provider/inference-contract.js';
 import { FinishAnalysisInput, type ExplorationResultV2 } from '../domain/exploration-result.js';
 import type { ObservedLine } from './citation-validation.js';
 import { finalizeExplorationResult } from './exploration-result-finalizer.js';
 import { renderExplorationResult } from './exploration-result-renderer.js';
+import { compactExplorerContext } from './explorer-context.js';
+import { createExplorerMemory, recordObservedLines, recordUnavailablePath, recordValidatedFindings } from './explorer-memory.js';
 
 const Read = z.object({ path: z.string().min(1).max(512), startLine: z.number().int().min(1).default(1), endLine: z.number().int().min(1).optional() }).strict();
 const List = z.object({ cursor: z.string().max(512).default('').describe('Omit or use empty string on the first page. Only reuse nextCursor returned by list_files. This is NOT a filename or directory filter.'), limit: z.number().int().min(1).max(100).default(50) }).strict();
@@ -27,14 +30,16 @@ export class ExplorerBlocked extends Error {
   constructor(readonly requiredAction: unknown) { super(ERROR_CODES.MISSING_CAPABILITY); }
 }
 
-export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnapshotTools, capabilities: CapabilityService, provider: ExplorerProvider, signal: AbortSignal, reserve: (kind: 'turn' | 'tool') => void = () => {}) {
+export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnapshotTools, capabilities: CapabilityService, provider: ExplorerProvider, signal: AbortSignal, reserve: (kind: 'turn' | 'tool') => void | Promise<void> = () => {}) {
   const secrets = snapshot.secrets;
   const safe = (text: string) => secrets.filter(text).text;
   const checklist = coverageChecklist(request.question);
   const checklistText = checklist.length > 1 ? `\nRequired coverage checklist; do not finish until each item has a finding or bounded limitation:\n${checklist.map((item, index) => `${index + 1}. ${item}`).join('\n')}` : '';
+  const repoMap = await buildRepoMap(snapshot, request.repoId, signal);
+  const memory = createExplorerMemory(snapshot.metadata.snapshotId, checklist);
   const messages: ExplorerMessage[] = [
     { role: 'system', content: EXPLORER_SYSTEM_PROMPT },
-    { role: 'user', content: safe(`Objective: ${request.objective}\nQuestion: ${request.question}${checklistText}\nSuggested focus paths: ${request.focusPaths.join(', ')}\nEnforced path scope: ${request.scope ? JSON.stringify(request.scope) : 'all otherwise eligible committed files'}`) },
+    { role: 'user', content: safe(`Objective: ${request.objective}\nQuestion: ${request.question}${checklistText}\nSuggested focus paths: ${request.focusPaths.join(', ')}\nEnforced path scope: ${request.scope ? JSON.stringify(request.scope) : 'all otherwise eligible committed files'}\nSnapshot navigation map (paths and manifest metadata only; verify behavior with cited source): ${JSON.stringify(repoMap)}`) },
   ];
   const search = new SearchService(snapshot, capabilities);
   const evidence: Array<{ path: string; startLine: number; endLine: number; sha256?: string }> = [];
@@ -61,8 +66,9 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
   const started = performance.now();
   for (; turns < request.budget.maxModelTurns; turns++) {
     signal.throwIfAborted();
+    compactExplorerContext(messages, memory);
     if (Buffer.byteLength(JSON.stringify(messages)) > 24_000) throw new Error(ERROR_CODES.EXPLORER_CONTEXT_LIMIT);
-    reserve('turn');
+    await reserve('turn');
     const offeredTools = coverageResult ? definitions.filter(tool => tool.function.name === 'finish_analysis') : definitions;
     const raw = await provider.chat(messages, offeredTools, signal);
     signal.throwIfAborted();
@@ -88,7 +94,7 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
     if (finishCalls.length) {
       if (calls.length !== 1 || finishCalls.length !== 1) throw new Error(ERROR_CODES.EXPLORER_INVALID_COMPLETION);
       if (toolCalls + 1 > request.budget.maxToolCalls) throw new Error(ERROR_CODES.EXPLORER_TOOL_LIMIT);
-      reserve('tool');
+      await reserve('tool');
       toolCalls++;
       const finalized = finalizeExplorationResult(finishCalls[0]!.function.arguments, {
         observedLines,
@@ -117,6 +123,7 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
           return { ...finalized.result, findings, limitations, summary: renderExplorationResult({ schemaVersion: 2, findings, limitations }) };
         })() : finalized.result;
         const combined = enrichObservedOperations(combinedModel, observedLines, request.question);
+        recordValidatedFindings(memory, combined);
         const multiTopicQuestion = /[,;]|\bversus\b/i.test(request.question);
         const completionText = combined.findings.map(finding => finding.statement).join(' ').toLowerCase();
         const missingTerms = coverageTerms(checklist.join(' ')).filter(term => !completionText.includes(term));
@@ -182,7 +189,7 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
     messages.push({ role: 'assistant', content, tool_calls: validated });
     for (const call of validated) {
       signal.throwIfAborted();
-      reserve('tool');
+      await reserve('tool');
       toolCalls++;
       let result: unknown;
       let found: typeof evidence = [];
@@ -234,6 +241,7 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
           const next = [...merged.values()];
           if (Buffer.byteLength(JSON.stringify(next)) > 24_000) throw new Error(ERROR_CODES.EXPLORER_CONTEXT_LIMIT);
           observedLines.splice(0, observedLines.length, ...next);
+          recordObservedLines(memory, lines);
         }
         if (call.function.name === 'read_file' && found.length) successfulReads.add(key);
       } catch (error) {
@@ -242,7 +250,12 @@ export async function runExplorer(request: AnalyzeRepoRequest, snapshot: GitSnap
         code = hasErrorCode(error, [ERROR_CODES.SCOPE_PATH_DENIED, ERROR_CODES.INVALID_LIST_CURSOR, ERROR_CODES.READ_ALREADY_OBSERVED, ERROR_CODES.PATH_DENIED, ERROR_CODES.READ_RANGE_LIMIT, ERROR_CODES.TOOL_OUTPUT_LIMIT, ERROR_CODES.BINARY_FILE, ERROR_CODES.INVALID_UTF8]) ? error.message : 'TOOL_UNAVAILABLE';
         if (code === ERROR_CODES.PATH_DENIED || code === ERROR_CODES.SCOPE_PATH_DENIED) {
           unavailablePaths++;
-          if (call.function.name === 'read_file') unavailableReadPaths.set(Read.parse(call.function.arguments).path, code === ERROR_CODES.SCOPE_PATH_DENIED ? 'outside_scope' : 'unavailable');
+          if (call.function.name === 'read_file') {
+            const path = Read.parse(call.function.arguments).path;
+            const reason = code === ERROR_CODES.SCOPE_PATH_DENIED ? 'outside_scope' : 'unavailable';
+            unavailableReadPaths.set(path, reason);
+            recordUnavailablePath(memory, path, reason);
+          }
         }
         result = code === ERROR_CODES.PATH_DENIED ? { error: code, reason: 'SNAPSHOT_PATH_UNAVAILABLE', message: 'This path is not available in the eligible committed snapshot. It may be absent, excluded, or invalid. Working-tree existence was not checked. Use list_files to discover eligible paths.', baseCommit: snapshot.metadata.baseCommit } : { error: code };
         if (code === ERROR_CODES.READ_ALREADY_OBSERVED) result = { error: code, message: 'This exact read already succeeded in this immutable snapshot. Reuse its evidence above and finish the answer, or read a different range. Repeating cannot reveal redacted text.' };

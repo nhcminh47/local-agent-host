@@ -8,7 +8,15 @@ Architecture: Cursor on Mac mini → stdio MCP bridge → daemon near the repo �
 
 - Node **22.23.2** (see `.node-version`), pnpm **11.7.0**, Git and ripgrep.
 - Existing Ollama installation for live inference checks. GPU is not required for deterministic tests.
-- No model downloads or global configuration changes are performed by these scripts.
+- M0 diagnostic scripts do not download models or change global configuration. The optional bootstrap flow below writes user-local host and MCP configuration.
+
+## First-run setup and workspace trust
+
+Run `pnpm bootstrap` from the clone with the pinned toolchain. It creates private host configuration and separate bridge/management credentials in the user state directory, asks for the Ollama URL/model and Cursor or manual MCP setup, and prints readiness plus the daemon startup command. It does not download a model or start a permanent daemon. `pnpm bootstrap --reconfigure` changes selected settings; `pnpm bootstrap --check` reads readiness without changing user state. The build step may refresh ignored `dist/` output.
+
+Start the daemon with `pnpm m1:daemon`. For a repository, run `pnpm host workspace select <absolute-path>`, then `pnpm host workspace trust <workspaceRef> --once` or `--always` in an interactive terminal. Use the returned `workspaceRef` in a schema-version-2 `analyze_repo` request; no repository ID is needed. `pnpm host workspace list` shows grants, `deny <workspaceRef>` declines the current prompt, and `revoke <workspaceRef>` removes read trust and cancels bound work. Trust is only for read-only exploration. If no workspace reference is supplied, analysis returns a selection action before reading repository content.
+
+Cursor's documented global MCP file is `~/.cursor/mcp.json`. Bootstrap updates only the `local-agent-host` entry and backs up an existing parseable file. Cursor's active-workspace signal has not been qualified, so select the workspace with the host CLI. Native Cursor/macOS qualification remains open. The older explicit environment-variable setup below is preserved for development and migration.
 
 ## Run M0
 
@@ -45,6 +53,7 @@ The Windows process spike uses `taskkill /T /F` on its own disposable fixture. m
 - [Source structure and refactor validation](docs/source-structure.md)
 - [M0 Spec Kit documentation](specs/002-m0-foundation/spec.md)
 - [M1 Spec Kit documentation](specs/003-m1-task-backbone/spec.md)
+- [Host bootstrap and workspace trust specification](specs/006-host-bootstrap-workspace-trust/spec.md)
 - [Technical plan](docs/technical-plan.md)
 - [M0 evidence and remaining gates](docs/m0-status.md)
 - [M1 task-backbone status](docs/m1-status.md)

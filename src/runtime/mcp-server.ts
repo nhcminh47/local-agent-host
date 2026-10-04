@@ -3,18 +3,20 @@ import { mcpResponse } from '../shared/mcp-response.js';
 import { MESSAGES } from '../constants/messages.js';
 import { McpServer } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { AnalyzeRepoInput, CancelTaskInput, GetTaskInput } from '../domain/task-contracts.js';
-import { DaemonClient } from './ipc-client.js';
+import { AnalyzeRepoWireInput, CancelTaskInput, GetTaskInput } from '../domain/task-contracts.js';
+import { DaemonClient, DaemonRequestError } from './ipc-client.js';
+import { readHostConfig, readHostToken } from '../bootstrap/host-config.js';
 import { CheckCapabilityInput, ResolveCapabilityInput } from '../exploration/capability-service.js';
 
-const token = process.env['LOCAL_AGENT_IPC_TOKEN'];
+const hostConfig = process.env['LOCAL_AGENT_IPC_TOKEN'] && process.env['LOCAL_AGENT_DAEMON_URL'] ? null : await readHostConfig();
+const token = process.env['LOCAL_AGENT_IPC_TOKEN'] ?? await readHostToken();
 if (!token) throw new Error(MESSAGES.IPC_TOKEN_REQUIRED);
-const daemon = new DaemonClient(process.env['LOCAL_AGENT_DAEMON_URL'] ?? 'http://127.0.0.1:43127', token);
+const daemon = new DaemonClient(process.env['LOCAL_AGENT_DAEMON_URL'] ?? `http://127.0.0.1:${hostConfig?.daemonPort ?? 43127}`, token);
 const server = new McpServer({ name: 'local-agent-bridge', version: '0.1.0' });
 
-server.registerTool('analyze_repo', { description: 'Durably submit a read-only analysis task to the local daemon.', inputSchema: AnalyzeRepoInput }, async raw => {
+server.registerTool('analyze_repo', { description: 'Durably submit a read-only analysis task to the local daemon.', inputSchema: AnalyzeRepoWireInput }, async raw => {
   try { return mcpResponse(await daemon.call('submit', raw)); }
-  catch (error) { return mcpResponse({ schemaVersion: 1, error: error instanceof Error ? error.message : ERROR_CODES.DAEMON_UNAVAILABLE }, true); }
+  catch (error) { return mcpResponse(error instanceof DaemonRequestError && error.requiredAction ? error.requiredAction : { schemaVersion: 1, error: error instanceof Error ? error.message : ERROR_CODES.DAEMON_UNAVAILABLE }, true); }
 });
 server.registerTool('get_task', { description: 'Read durable task status and bounded events from the local daemon.', inputSchema: GetTaskInput }, async raw => {
   try { return mcpResponse(await daemon.call('get', raw)); }

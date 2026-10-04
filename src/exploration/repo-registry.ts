@@ -13,8 +13,10 @@ export class RepoRegistry {
     if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(repoId)) throw new Error(ERROR_CODES.INVALID_REPO_ID);
     const canonical = await realpath(resolve(root));
     if (!(await stat(canonical)).isDirectory()) throw new Error(ERROR_CODES.REPO_NOT_DIRECTORY);
+    const priorRoot = this.#roots.get(repoId);
+    if (priorRoot && priorRoot !== canonical) throw new Error(ERROR_CODES.SNAPSHOT_REPO_CHANGED);
     const existing = this.#idsByRoot.get(canonical.toLowerCase());
-    if (existing && existing !== repoId) throw new Error(ERROR_CODES.DUPLICATE_REPO_ROOT);
+    if (existing && existing !== repoId && !repoId.startsWith('ws-')) throw new Error(ERROR_CODES.DUPLICATE_REPO_ROOT);
     this.#roots.set(repoId, canonical);
     this.#idsByRoot.set(canonical.toLowerCase(), repoId);
     return canonical;
@@ -25,6 +27,8 @@ export class RepoRegistry {
     if (!root) throw new UnknownRepo();
     return root;
   }
+
+  idsForRoot(root: string): string[] { return [...this.#roots].filter(([, value]) => value === root).map(([id]) => id); }
 
   async resolveFile(repoId: string, repoPath: string): Promise<{ root: string; path: string; relativePath: string }> {
     if (!repoPath || repoPath.includes('\0') || repoPath.startsWith('/') || repoPath.startsWith('\\') || /^[A-Za-z]:/.test(repoPath) || repoPath.split(/[\\/]/).includes('..')) throw new PathDenied();

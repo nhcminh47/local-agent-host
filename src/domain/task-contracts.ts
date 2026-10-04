@@ -23,6 +23,12 @@ export const AnalyzeRepoInput = z.object({
   }).strict().default({ maxWallSeconds: 600, maxModelTurns: 12, maxToolCalls: 40 }),
 }).strict();
 
+export const AnalyzeWorkspaceInput = AnalyzeRepoInput.omit({ repoId: true }).extend({
+  schemaVersion: z.literal(2),
+  workspaceRef: z.string().regex(/^ws-[a-f0-9]{32}$/).optional(),
+}).strict();
+export const AnalyzeRepoWireInput = z.discriminatedUnion('schemaVersion', [AnalyzeRepoInput, AnalyzeWorkspaceInput]);
+
 export const GetTaskInput = z.object({
   schemaVersion: z.literal(1),
   taskId: z.string().uuid(),

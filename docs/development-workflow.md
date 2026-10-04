@@ -14,6 +14,11 @@ Existing packages:
 | [002-m0-foundation](../specs/002-m0-foundation/spec.md) | Compatibility probes and restricted model evaluation |
 | [003-m1-task-backbone](../specs/003-m1-task-backbone/spec.md) | Durable tasks and authenticated reconnectable bridge |
 | [004-project-guidance](../specs/004-project-guidance/spec.md) | Contributor guidance, architecture and memories |
+| [005-m2-5-context-architecture](../specs/005-m2-5-context-architecture/spec.md) | Read-only context architecture; RepoMap slice implemented, memory/compaction qualification open |
+| [006-host-bootstrap-workspace-trust](../specs/006-host-bootstrap-workspace-trust/spec.md) | Implemented user-local setup and workspace read trust; live/native qualification remains open |
+| [007-repository-bootstrap](../specs/007-repository-bootstrap/spec.md) | Planned evidence-backed repository baseline; specification only |
+| [008-spec-lifecycle-context-hygiene](../specs/008-spec-lifecycle-context-hygiene/spec.md) | Planned spec lifecycle and retrieval hygiene; specification only |
+| [009-m2-6-learning-memory](../specs/009-m2-6-learning-memory/spec.md) | Planned durable learning with provenance, freshness and reviewed promotion |
 
 Numbers are package identifiers, not milestone chronology. Reuse an existing package when its scope matches. For a distinct feature, choose the next unused number and a short kebab-case name; do not create milestone-named source folders.
 

@@ -5,11 +5,13 @@ Updated 20 September 2026. This is a behavior-preserving organization change wit
 | Directory | Responsibility |
 | --- | --- |
 | `src/runtime/` | Production daemon, authenticated IPC client and stdio MCP bridge |
+| `src/bootstrap/` | User-local setup, private config/credential storage, readiness and Cursor MCP entry |
 | `src/domain/` | Request, task, snapshot, scope and result contracts |
-| `src/service/` | Task orchestration, explorer loop, coverage analysis and result validation/rendering; status-branch-validation.ts guards supported conditional numeric status claims |
-| `src/provider/` | Ollama connectivity and explorer adapters |
+| `src/service/` | Task orchestration, explorer loop, coverage analysis and result validation/rendering; `explorer-memory.ts` and `explorer-context.ts` hold the in-memory context prototype |
+| `src/provider/` | Agent-facing inference contract and Ollama connectivity/explorer adapters |
 | `src/store/` | Durable task/event storage, leases and deadlines |
-| `src/exploration/` | Repository registration, immutable snapshots, filtered read/search and capabilities |
+| `src/exploration/` | Repository registration, immutable snapshots, filtered read/search and capabilities; `repo-map.ts` derives bounded navigation from eligible snapshot content |
+| `src/service/workspace-trust-service.ts` and `src/store/workspace-grant-store.ts` | Read-grant checks, durable grants and task binding enforcement |
 | `src/shared/` | HTTP JSON framing, MCP response envelopes and allowlisted error matching |
 | `src/utils/` | Reused origin validation and process-liveness helpers |
 | `src/constants/` | Stable error identifiers, configuration messages and HTTP status codes |

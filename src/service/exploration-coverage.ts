@@ -112,7 +112,7 @@ export function enrichObservedOperations(result: ExplorationResultV2, lines: rea
     const distance = Math.min(...ranges.map(citation => line.line < citation.startLine
       ? citation.startLine - line.line : line.line > citation.endLine ? line.line - citation.endLine : 0), 999);
     const statusRelevant = /status codes?/i.test(question) && /['"][A-Z][A-Z0-9_]{2,}['"]|\b[1-5]\d{2}\b/.test(line.text);
-    const readyRelevant = /\/ready\b/i.test(question) && distance <= 10;
+    const readyRelevant = /\/ready\b|\breadiness\b/i.test(question) && distance <= 12;
     return distance <= 4 || (!ranges.length && question.includes(line.path)) || statusRelevant || readyRelevant;
   });
   const augmentedFindings = result.findings.map(finding => {

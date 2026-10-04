@@ -644,3 +644,28 @@ M3 editing/worktree/verification capabilities
 ```
 
 Implementation may overlap where practical, but authorization should be settled before M3 introduces side effects.
+
+## 21. Planning clarification (2026-09-25)
+
+The following user stories make the existing goals executable without changing the M2 product boundary.
+
+### US1 (P1) — Configure the host once
+
+A user with a fresh clone runs `pnpm bootstrap`, selects the supported provider and a qualified MCP client, and receives a user-local configuration and a sanitized readiness result. Re-running bootstrap preserves unrelated client settings, task data, and workspace grants. `--check` reports readiness without prompting or writing.
+
+### US2 (P1) — Authorize a repository before analysis
+
+A client requests read-only analysis for a workspace candidate. The host canonicalizes and validates the Git root, then returns `WORKSPACE_TRUST_REQUIRED` before snapshot capture or inference if no read grant exists. A user can grant read trust once, grant it durably, or deny through a host-controlled CLI. Repeating the analysis after authorization uses the existing snapshot and scope controls. The user need not create a repository ID manually.
+
+### US3 (P2) — Inspect and revoke trust
+
+A user lists durable grants and revokes one. Revocation stops new admission immediately; queued or resumed work must recheck trust before inference. An in-flight task must not continue using a revoked grant. Read trust never enables edit or verification capabilities.
+
+### Clarified boundaries
+
+- The first automatic client adapter is Cursor only after its user-scope configuration and workspace-candidate behavior have been verified in a controlled fixture. Other named clients receive precise manual guidance until individually qualified; the generic adapter remains available.
+- A workspace path or ID in an MCP request is only an untrusted candidate. It cannot authorize itself. The host owns canonicalization, identity, grant lookup, and registration. If the client cannot provide an unambiguous candidate, the user selects the path through the host CLI; the result is a host-generated reference that can be supplied to the analysis request.
+- The initial authorization channel is an interactive host CLI. MCP responses contain a bounded required action and no approval token. Client-native permission UI is optional later work.
+- Existing schema-version-1 `repoId` requests and static repository configuration remain a compatibility path, but are subject to read trust when workspace trust is enabled. New normal-use requests use a versioned workspace reference; the implementation plan defines the wire contract.
+- `Trust once` is daemon-process-local. After restart, a nonterminal task admitted under that grant needs a fresh grant before inference resumes. Durable grants are revalidated against canonical root identity on admission and restore.
+- The plan does not assume that `process.cwd()` identifies a client's repository. An unqualified or ambiguous candidate fails with a required action rather than selecting a repository automatically.

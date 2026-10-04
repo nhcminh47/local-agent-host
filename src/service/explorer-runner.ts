@@ -35,9 +35,14 @@ export class ExplorerRunner {
       try {
         const request = AnalyzeRepoInput.parse(JSON.parse(claimed.task.payloadJson));
         const snapshot = await this.admission.restore(next.id);
+        const binding = await this.admission.bindingForTask(next.id);
         signal.throwIfAborted();
-        const result = await runExplorer(request, snapshot, this.capabilities, this.provider, signal, kind => store.reserveExplorerBudget(next.id, owner, claimed.generation, kind, kind === 'turn' ? request.budget.maxModelTurns : request.budget.maxToolCalls));
+        const result = await runExplorer(request, snapshot, this.capabilities, this.provider, signal, async kind => {
+          if (binding) await this.admission.trust?.assertBinding(binding);
+          store.reserveExplorerBudget(next.id, owner, claimed.generation, kind, kind === 'turn' ? request.budget.maxModelTurns : request.budget.maxToolCalls);
+        });
         signal.throwIfAborted();
+        if (binding) await this.admission.trust?.assertBinding(binding);
         store.completeLeased(next.id, owner, claimed.generation, result);
       } catch (error) {
         const status = store.get(next.id).status;
@@ -45,6 +50,11 @@ export class ExplorerRunner {
         else if (status === 'running') {
           if (deadline.aborted) store.expireDue();
           else if (error instanceof ExplorerBlocked) store.blockLeased(next.id, owner, claimed.generation, error.requiredAction);
+          else if (hasErrorCode(error, ['WORKSPACE_TRUST_REQUIRED', 'WORKSPACE_IDENTITY_CHANGED'])) {
+            const bound = store.workspaceBinding(next.id);
+            const ref = bound?.workspaceRef ?? (this.admission.trust ? (await this.admission.trust.select(this.admission.repos.root(next.repoId))).workspaceRef : null);
+            store.blockWorkspaceLeased(next.id, owner, claimed.generation, ref);
+          }
           else if (hasErrorCode(error, [ERROR_CODES.EXPLORER_CONTEXT_LIMIT, ERROR_CODES.EXPLORER_TOOL_LIMIT, ERROR_CODES.EXPLORER_TURN_LIMIT])) store.budgetExceededLeased(next.id, owner, claimed.generation, error.message);
           else store.failLeased(next.id, owner, claimed.generation, error instanceof Error && /^(EXPLORER_[A-Z_]+|SNAPSHOT_[A-Z_]+|GIT_OBJECT_UNAVAILABLE)$/.test(error.message) ? error.message : 'EXPLORER_FAILED');
         }

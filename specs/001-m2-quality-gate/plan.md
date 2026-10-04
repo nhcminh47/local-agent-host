@@ -122,6 +122,14 @@ Use the existing acceptance and grading harnesses with Node 22.23.2 / pnpm 11.7.
 
 ## Complexity Tracking
 
+### Windows v32 evidence addendum — 4 October 2026
+
+Use the existing pinned toolchain, five-case harness and ignored `.local/` reports. Summarize automated dimensions and preservation for both observed attempts, identify the repeated database omission against the fixed rubric, and retain unreviewed semantic dimensions. Record the earlier Cursor UI task separately with its exact scope and outcome. Update status and memory after checking links and diff whitespace. No runtime, rubric, prompt, frozen budget or capability changes are part of this evidence update.
+
+### Readiness coverage correction — 4 October 2026
+
+Extend only the existing readiness-question test in `src/service/exploration-coverage.ts` from the route spelling `/ready` to the natural-language word `readiness`. Use a twelve-line proximity bound for both spellings and preserve observed-line validation. Add a focused regression in `tests/m2-findings.test.ts` with the observed database citation-to-probe distance and a negative question. Rebuild and run pinned check/test plus the explorer MCP smoke, then run the unchanged five-case acceptance suite under a new source profile. Do not carry earlier run IDs into a qualifying pair or mark semantic dimensions passed without review.
+
 | Decision | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | Add a structured completion tool | Every published claim must be independently gradeable and renderable | More prompt guidance has already produced 0/5 fully accepted answers in the final rerun |

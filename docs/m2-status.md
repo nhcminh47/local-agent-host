@@ -1,10 +1,28 @@
 # M2 — Exploration status
 
+## M2.5 context checkpoint — 4 October 2026
+
+A bounded RepoMap from the admitted filtered snapshot now supplies initial navigation, and in-memory evidence compaction has an over-limit explorer regression. Pinned Node 22.23.2 checking, 116/116 deterministic tests and fake-provider M2 MCP smoke passed. The new context profile has not had frozen live quality review or native macOS validation. M2.5 qualification and M2.6 implementation remain open; repository baseline and M2.7 lifecycle are still planned. M2 remains open and M3 disabled. See the [context checkpoint memory](memories/2026-10-04-m2-context-checkpoint.md).
+
+## Readiness coverage and claim review — 4 October 2026
+
+The bounded readiness-question correction passed pinned check, 110/110 tests and synthetic MCP smoke. Fresh Windows candidate `m2-readiness-v2-20261004-a` completed 5/5, passed all automated exact-value checks and 25/25 preservation checks, with a before/after matching 96-file source manifest. A separate agent-labelled (non-human) rubric review graded it **0/5** because health, database, startup and dependencies omit requested details, and scope denial overstates implementation as applied behavior. The earlier ten-line correction also failed a database exact value. There is no qualifying run A or confirmation pair; human claim review, native Cursor five-case/restart evidence and macOS validation remain open. **M2 remains open; M3 remains disabled.** See the [dated evidence report](m2-windows-evidence-2026-10-04.md).
+
+## Windows v32 qualification and Cursor smoke — 4 October 2026
+
+Two unchanged frozen Windows v32 acceptance attempts completed all five tasks and passed all 25 preservation checks per run. Both failed the database exact-value dimension by omitting `validateMigrations` and `SELECT 1 AS value`; claim-level human review was not performed. No qualifying first run or confirmation pair exists. Pinned Windows validation passed `pnpm check`, 109/109 tests, M1 smoke and M2 synthetic MCP smoke. A separate live Cursor 3.22.12 UI task completed on Windows through the MCP bridge, but it was an ad hoc two-file task and does not satisfy the frozen five-case native restart/preservation gate or macOS validation. This is Windows client evidence for the cross-platform app only. **M2 remains open; M3 remains disabled.** See the [dated evidence report](m2-windows-evidence-2026-10-04.md).
+
+## Host bootstrap and workspace trust regression — 26 September 2026
+
+Windows Node 22.23.2 / pnpm 11.7.0: `pnpm check` and the deterministic suite passed (109/109 tests), along with `pnpm m2:smoke:mcp` using the fake Ollama provider and seven failure/output canaries. The new tests cover an isolated user-local bootstrap, v2 admission before/after trust, separate management authority, durable and once grants, symlink/worktree identities, marker replacement, malformed grants, scope/secret exclusions and active revocation. Interactive bootstrap succeeded in an ignored isolated user-state fixture, and rerun plus `--check` worked without a provider; a separate `--check` fixture created no user state. The provider/model and daemon readiness fields were false because no service was started for that fixture.
+
+These checks do not qualify live v32 model quality or native Cursor/macOS first-use behavior. The active host still uses M2 read-only exploration; M3 remains disabled.
+
 Started 18 September 2026 after the Windows M1 core gate passed.
 
 Live checkpoint before the 413 fix (20 September): the live rerun after source reorganization completed **5/5** tasks and passed **25/25** preservation checks, but agent review graded **4/5** because health overgeneralized the 413 error branch. No confirmation run was started. Strict checking, **90/90** deterministic tests and the MCP smoke passed on Node 22.23.2 / pnpm 11.7.0. The historical v31 pair remains recorded, but its local review metadata identifies an agent reviewer, not an independently verified human review. Current-source qualification, human review and native Cursor/macOS topology remain open; M3 remains disabled. See the [live rerun report](m2-live-rerun-2026-09-20.md) and [historical v31 report](m2-quality-gate-v31-2026-09-19.md).
 
-Latest fix checkpoint (20 September): prompt contract **v32** adds a narrow conditional-status context guard and targeted bounded repair; the daemon independently returns a usable **413 REQUEST_TOO_LARGE** for oversized bodies. Strict checking and **102/102** deterministic tests passed, as did M1 reconnect and M2 MCP smoke (seven canaries). The original overgeneralized claim is rejected in deterministic regressions. **Live v32 qualification has not been run**; human review, native topology and M3 gates are unchanged. See the [413 correction memory](memories/2026-09-20-413-corrections.md).
+Latest fix checkpoint (20 September): prompt contract **v32** adds a narrow conditional-status context guard and targeted bounded repair; the daemon independently returns a usable **413 REQUEST_TOO_LARGE** for oversized bodies. Strict checking and **102/102** deterministic tests passed, as did M1 reconnect and M2 MCP smoke (seven canaries). The original overgeneralized claim is rejected in deterministic regressions. At that checkpoint, live v32 qualification had not been run; human review, native topology and M3 gates were unchanged. See the [413 correction memory](memories/2026-09-20-413-corrections.md).
 
 ## Agreed capability policy
 

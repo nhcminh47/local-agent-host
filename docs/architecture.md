@@ -1,6 +1,6 @@
 # Project architecture
 
-Last reviewed: **20 September 2026**. This document describes the current source after the folder refactor. [Technical plan](technical-plan.md) describes the broader roadmap and includes features not yet implemented.
+Last reviewed: **26 September 2026**. This document describes the current source. [Technical plan](technical-plan.md) describes the broader roadmap and includes features not yet implemented.
 
 ## Purpose and scope
 
@@ -51,6 +51,8 @@ For the complete directory map, see [source structure](source-structure.md). Sou
 
 ## Provider modes
 
+User-local bootstrap stores versioned host configuration and separate bridge/management credentials outside the source checkout. The `host` CLI selects a canonical Git root, then a confirmed read grant is held in daemon memory for one session or in SQLite for durable trust. `analyze_repo` v2 accepts the selected host-generated workspace reference. The daemon checks identity and read trust before capture and again on restore and each model-bound operation. Revocation cancels bound active work. The v1 static `repoId` path remains available for explicit developer configuration; when bootstrap trust is active, it also requires read trust.
+
 | Mode | Behavior |
 | --- | --- |
 | `fake` | Default deterministic task lifecycle; no repository analysis or model call |
@@ -65,11 +67,13 @@ Model allowlists, limits and selected mode are host-owned. A model response cann
 2. Admission validates input and idempotency. An identical canonical payload with the same repository/request key returns the existing task; a changed payload conflicts. Queue capacity applies after duplicate lookup.
 3. In explorer mode, admission maps the registered repository id to a host-owned root, resolves the requested Git ref, and atomically stores the task, initial event and snapshot identity. Identity includes the base commit, snapshot id, root hash and optional scope hash.
 4. The explorer runner selects queued work, claims a fenced lease and restores the admitted snapshot. It does not silently resolve a later HEAD on retry. Model turns and tool calls consume persisted budgets.
-5. The loop offers `list_files`, `read_file`, `search_code` and `finish_analysis`. Calls are validated before dispatch. Reads/searches use eligible committed content with path scope, exclusions, secret filtering and output bounds; repository text remains untrusted data.
+5. The host first derives a bounded RepoMap from eligible committed paths and filtered manifests, then offers `list_files`, `read_file`, `search_code` and `finish_analysis`. Calls are validated before dispatch. Reads/searches use eligible committed content with path scope, exclusions, secret filtering and output bounds; repository text remains untrusted data.
 6. The host validates structured completion against evidence observed during the attempt, handles bounded repairs/coverage, derives excerpts/exact values and renders the public summary. Arbitrary assistant prose is not a successful completion path.
 7. The store publishes the terminal result/events only for the active lease owner and generation. A new bridge can retrieve the task and bounded event pages; long polling does not transfer ownership to the bridge.
 
 The completed explorer result is schema version 2 with findings, citations, limitations, snapshot identity and metrics. `verification` remains `not_run`; `semanticVerification` is `not_performed`. Grounded ranges and exact excerpts do not by themselves prove semantic correctness or runtime behavior. Prompt contract v32 additionally requires cited, verbatim conditional expressions for numeric status claims tied to supported single-line status ternaries. This narrow lexical guard uses the existing grounding repair and leaves semantic verification and live qualification open.
+
+The M2.5 context layer keeps host-observed lines, validated findings and unavailable paths in per-attempt memory. When the message transcript exceeds a threshold, it retains the system contract and task context, adds bounded observed evidence and recent messages, and keeps the 24,000-byte hard cap. It does not persist working memory or change the public result contract. A deterministic explorer regression covers compaction and citation survival; live quality qualification remains open. Restart begins a fresh transcript at the admitted snapshot with cumulative budgets.
 
 ## Persistence, scheduling and recovery
 

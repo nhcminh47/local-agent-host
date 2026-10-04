@@ -163,3 +163,22 @@ Order: T037 → T038 → T039. Scope analysis: these tasks reuse FR-013–FR-020
 - [x] T043 [US3] Record the narrow guard, qualification boundary and observed checks in architecture, source map, M2 status/runbook and indexed memory.
 
 Order: T040 -> T041 -> T042 -> T043. Pre-implementation analysis: FR-021 maps to guard, feedback and regressions. No schema, budget, scope or capability expansion. This lexical guard does not satisfy FR-012 human semantic review or FR-016 two-run qualification. Existing 413 live failure remains historical evidence.
+
+## Windows v32 evidence — 4 October 2026
+
+- [x] T044 Run pinned Windows check, tests and applicable MCP smoke; run the unchanged frozen v32 suite with unique report IDs and preserve raw reports under ignored `.local/`.
+- [x] T045 Summarize the actual automated and preservation outcomes, repeated defects and review status in a sanitized dated report; classify the earlier Cursor UI task as Windows client evidence only.
+- [x] T046 Update M2 status and an indexed dated memory; verify links, source references, document consistency and diff whitespace. Keep M2 open and M3 disabled unless the original gates are met.
+
+Order: T044 -> T045 -> T046. T044 observed two candidate runs, each with five runtime completions and one automated exact-value failure; neither qualifies as the first accepted run, so an unchanged confirmation is not yet justified. The remaining tasks record evidence and do not alter acceptance criteria.
+
+## Readiness coverage correction — 4 October 2026
+
+- [x] T047 [US1] Recognize an explicit natural-language readiness request in the bounded observed-operation selection without changing scope, tools or budgets.
+- [x] T048 [US2] Add a regression for already-observed `validateMigrations` and `SELECT 1` evidence, plus a negative non-readiness question.
+- [x] T049 [US3] Run pinned check/test, explorer MCP smoke and a fresh frozen Windows live suite; review results and start an unchanged confirmation only if run A qualifies.
+- [x] T050 Record the new source profile, validation, review provenance and remaining native/human gates in the M2 report, status and indexed memory.
+
+Order: T047 -> T048 -> T049 -> T050. The new source behavior invalidates the earlier v32 candidate runs as a qualifying pair, although their failure evidence remains recorded.
+
+Observed outcome: the twelve-line candidate passed 5/5 automated cases and 25/25 preservation checks, but a diagnostic agent review graded 0/5. No qualifying run A exists; no confirmation was started. Independent human review and native/macOS gates remain open.

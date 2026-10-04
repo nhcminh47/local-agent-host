@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import { createHash, randomUUID } from 'node:crypto';
 import type { AnalyzeRepoRequest, TaskEvent, TaskRecord, TaskStatus } from '../domain/task-contracts.js';
 import { SnapshotIdentity, type SnapshotRecord } from '../domain/snapshot-contracts.js';
+import { WorkspaceBinding, type WorkspaceBindingValue } from '../domain/workspace-trust-contracts.js';
 
 const terminal = new Set<TaskStatus>(['cancelled', 'completed', 'failed', 'budget_exceeded']);
 
@@ -44,6 +45,7 @@ export class TaskStore {
         task_id TEXT PRIMARY KEY REFERENCES tasks(id),
         identity_json TEXT NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS task_workspace_bindings(task_id TEXT PRIMARY KEY REFERENCES tasks(id), binding_json TEXT NOT NULL);
     `);
     for (const migration of [
       'ALTER TABLE tasks ADD COLUMN lease_owner TEXT',
@@ -56,7 +58,7 @@ export class TaskStore {
       try { this.#db.exec(migration); }
       catch (error) { if (!(error instanceof Error) || !/duplicate column name/i.test(error.message)) throw error; }
     }
-    this.#db.exec('UPDATE schema_meta SET version=5');
+    this.#db.exec('UPDATE schema_meta SET version=6');
     this.#db.exec("UPDATE tasks SET deadline_at=datetime(created_at, '+10 minutes') WHERE deadline_at IS NULL");
   }
 
@@ -93,6 +95,26 @@ export class TaskStore {
     return this.#publishLeased(id, owner, generation, 'blocked', { schemaVersion: 1, outcome: 'blocked', error: ERROR_CODES.MISSING_CAPABILITY, requiredAction }, 'task.blocked');
   }
 
+  blockWorkspaceLeased(id: string, owner: string, generation: number, workspaceRef: string | null) {
+    return this.#publishLeased(id, owner, generation, 'blocked', { schemaVersion: 2, outcome: 'blocked', error: 'WORKSPACE_TRUST_REQUIRED', requiredAction: { capability: 'read', workspaceRef } }, 'task.blocked');
+  }
+
+  resumeWorkspaceTasks(ref: string, legacyRepoIds: string[] = []): number {
+    return this.#db.transaction(() => {
+      const rows = this.#db.prepare("SELECT id,repo_id FROM tasks WHERE status='blocked' AND deadline_at>?").all(now()) as Array<{ id: string; repo_id: string }>;
+      const ids = rows.filter(row => this.workspaceBinding(row.id)?.workspaceRef === ref || (!this.workspaceBinding(row.id) && legacyRepoIds.includes(row.repo_id))).map(row => row.id);
+      let count = 0;
+      for (const id of ids) {
+        const task = this.get(id);
+        if (task.status !== 'blocked' || !task.resultJson || JSON.parse(task.resultJson).error !== 'WORKSPACE_TRUST_REQUIRED') continue;
+        this.#db.prepare("UPDATE tasks SET status='queued',result_json=NULL,updated_at=? WHERE id=?").run(now(), id);
+        this.#event(id, 'task.workspace_trusted', { schemaVersion: 2 });
+        count++;
+      }
+      return count;
+    })();
+  }
+
   budgetExceededLeased(id: string, owner: string, generation: number, error: string) {
     return this.#publishLeased(id, owner, generation, 'budget_exceeded', { schemaVersion: 1, outcome: 'budget_exceeded', error }, 'task.budget_exceeded');
   }
@@ -119,8 +141,25 @@ export class TaskStore {
     catch { throw new Error(ERROR_CODES.INVALID_PERSISTED_SNAPSHOT); }
   }
 
-  submit(request: AnalyzeRepoRequest, snapshot?: SnapshotRecord): { task: TaskRecord; created: boolean } {
+  workspaceBinding(taskId: string): WorkspaceBindingValue | null {
+    const row = this.#db.prepare('SELECT binding_json FROM task_workspace_bindings WHERE task_id=?').get(taskId) as { binding_json: string } | undefined;
+    return row ? WorkspaceBinding.parse(JSON.parse(row.binding_json)) : null;
+  }
+
+  tasksForWorkspace(ref: string): string[] {
+    const rows = this.#db.prepare("SELECT tasks.id, binding_json FROM tasks JOIN task_workspace_bindings ON tasks.id=task_workspace_bindings.task_id WHERE tasks.status IN ('queued','running','blocked','cancelling')").all() as Array<{ id: string; binding_json: string }>;
+    return rows.filter(row => this.workspaceBinding(row.id)?.workspaceRef === ref).map(row => row.id);
+  }
+
+  activeTasksForRepos(repoIds: string[]): string[] {
+    if (!repoIds.length) return [];
+    const rows = this.#db.prepare("SELECT id,repo_id FROM tasks WHERE status IN ('queued','running','blocked','cancelling')").all() as Array<{ id: string; repo_id: string }>;
+    return rows.filter(row => repoIds.includes(row.repo_id) && !this.workspaceBinding(row.id)).map(row => row.id);
+  }
+
+  submit(request: AnalyzeRepoRequest, snapshot?: SnapshotRecord, binding?: WorkspaceBindingValue): { task: TaskRecord; created: boolean } {
     const identity = snapshot === undefined ? undefined : SnapshotIdentity.parse(snapshot);
+    const parsedBinding = binding === undefined ? undefined : WorkspaceBinding.parse(binding);
     const payloadJson = JSON.stringify(request);
     const payloadHash = hash(payloadJson);
     return this.#db.transaction(() => {
@@ -129,6 +168,7 @@ export class TaskStore {
         const task = this.#mapTask(existing);
         if (task.payloadHash !== payloadHash) throw new IdempotencyConflict();
         if ((identity !== undefined) !== (this.snapshot(task.id) !== null)) throw new Error(ERROR_CODES.SNAPSHOT_MODE_CONFLICT);
+        if (JSON.stringify(parsedBinding ?? null) !== JSON.stringify(this.workspaceBinding(task.id))) throw new IdempotencyConflict();
         return { task, created: false };
       }
       const active = Number((this.#db.prepare("SELECT COUNT(*) AS count FROM tasks WHERE status NOT IN ('cancelled','completed','failed','budget_exceeded')").get() as { count: number }).count);
@@ -142,6 +182,7 @@ export class TaskStore {
         this.#db.prepare('INSERT INTO task_snapshots(task_id,identity_json) VALUES(?,?)').run(id, JSON.stringify(identity));
         this.#event(id, 'task.snapshot_admitted', { schemaVersion: 1, baseCommit: identity.baseCommit, snapshotId: identity.snapshotId });
       }
+      if (parsedBinding) this.#db.prepare('INSERT INTO task_workspace_bindings(task_id,binding_json) VALUES(?,?)').run(id, JSON.stringify(parsedBinding));
       return { task: this.get(id), created: true };
     })();
   }

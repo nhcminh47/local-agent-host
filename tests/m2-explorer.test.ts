@@ -49,6 +49,7 @@ test('explorer uses list/search/read, records host evidence and filters both dir
   const provider: ExplorerProvider = { async chat(messages, tools) {
     assert.equal(tools.length, 4);
     assert.equal(JSON.stringify(messages).includes('fixture-secret-canary'), false);
+    assert(messages[1]?.content.includes('"files":["facts.txt"]'));
     return replies.shift()!;
   } };
   await new ExplorerRunner(service, capabilities, provider).tick();

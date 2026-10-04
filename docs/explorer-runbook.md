@@ -1,5 +1,17 @@
 # Read-only explorer on Windows
 
+The current M2.5 context layer includes a bounded map of eligible snapshot paths and filtered package-manifest metadata in the model's initial context. It exposes script names, not script bodies. Per-attempt memory and compaction have deterministic coverage, including an over-limit explorer completion; no live-model quality claim or macOS claim follows from those tests.
+
+## User-local bootstrap path
+
+Use `pnpm bootstrap`, start the daemon with `pnpm m1:daemon`, then select a Git workspace with `pnpm host workspace select <absolute-path>`. Selection returns a host-generated `workspaceRef` but does not grant access. In a local interactive terminal, run `pnpm host workspace trust <workspaceRef> --once` or `--always`. The once grant ends when the daemon exits; a durable grant survives restart. `pnpm host workspace list`, `deny <workspaceRef>` and interactive `revoke <workspaceRef>` manage trust. Revoke cancels bound queued/running work. The management credential is stored separately from the MCP bridge credential.
+
+Submit schema-version-2 `analyze_repo` with `workspaceRef`, `requestKey`, `baseRef`, `objective` and `question`; depth, focus, scope and budget retain their v1 meanings. A missing reference returns `WORKSPACE_SELECTION_REQUIRED`; an untrusted one returns `WORKSPACE_TRUST_REQUIRED` before snapshot capture or inference. The user must retry after trust. The bridge does not derive a workspace from its current directory because that signal has not been qualified. The [Cursor global MCP format](https://prod.cursor.com/help/customization/mcp) is documented and a synthetic preservation fixture passes. An ad hoc live Windows Cursor UI task completed on 4 October 2026; the full native Cursor topology gate and macOS first-use behavior remain unverified.
+
+`pnpm bootstrap --check` reports configuration, credentials, tools, provider/model and daemon reachability without changing user state. `pnpm bootstrap --reconfigure` preserves the task database and grants. User-local config and credentials are outside the clone by default. The bootstrap command compiles ignored `dist/` files; no model is downloaded and no daemon is installed as a background service.
+
+## Legacy environment setup
+
 Build with the pinned Node/pnpm toolchain. Copy `config/repos.example.json` to a host-owned configuration file outside the analyzed repository and replace its example ID/root with an actual Git root. Multiple IDs are supported. The model receives repo IDs and relative paths; it cannot register roots.
 
 Configure the daemon process:
@@ -48,7 +60,7 @@ Verification commands after build:
 - Set `M2_LIVE_OLLAMA=1` plus the existing Ollama credential settings, then run `pnpm m2:smoke:mcp` for live model verification
 - `pnpm m2:smoke:live`: narrower snapshot/store-recovery smoke retained from the preceding slice
 
-All smoke commands use temporary synthetic repositories and clean them afterward. They do not start a permanent daemon or change a user's repository/deployment. The checked-in evidence documents Windows results; macOS and Cursor UI acceptance are still pending.
+All smoke commands use temporary synthetic repositories and clean them afterward. They do not start a permanent daemon or change a user's repository/deployment. The checked-in evidence documents Windows results; an ad hoc Windows Cursor UI smoke passed, while full native Cursor and macOS acceptance remain pending.
 
 ## Result quality and snapshot feedback
 
