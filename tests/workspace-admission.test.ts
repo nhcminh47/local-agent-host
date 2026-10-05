@@ -62,6 +62,9 @@ test('daemon separates management authority and blocks v2 admission before trust
     const bridge = new DaemonClient(origin, bridgeToken);
     const management = new DaemonClient(origin, managementToken);
     await assert.rejects(bridge.call('workspace-select', { path: repository }), /UNAUTHORIZED/);
+    await assert.rejects(bridge.call('learning-list', { taskId: randomBytes(16).toString('hex') }), /UNAUTHORIZED/);
+    await assert.rejects(bridge.call('baseline-inspect', { taskId: randomBytes(16).toString('hex') }), /UNAUTHORIZED/);
+    await assert.rejects(bridge.call('spec-list', { taskId: randomBytes(16).toString('hex') }), /UNAUTHORIZED/);
     const selected = await management.call('workspace-select', { path: repository }) as { workspaceRef: string };
     const request = { schemaVersion: 2, workspaceRef: selected.workspaceRef, requestKey: 'fixture', baseRef: 'HEAD', objective: 'Read the fixture', question: 'What is its value?' };
     await assert.rejects(bridge.call('submit', { ...request, workspaceRef: undefined }), /WORKSPACE_SELECTION_REQUIRED/);

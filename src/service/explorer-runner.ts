@@ -5,11 +5,13 @@ import type { CapabilityService } from '../exploration/capability-service.js';
 import type { ExplorerProvider } from '../provider/explorer-provider.js';
 import { SnapshotTaskService } from './snapshot-task-service.js';
 import { ExplorerBlocked, runExplorer } from './explorer-loop.js';
+import type { LearningService } from './learning-service.js';
+import type { RepositoryBaselineService } from './repository-baseline-service.js';
 
 export class ExplorerRunner {
   #busy = false;
   #active: { id: string; abort: AbortController } | null = null;
-  constructor(readonly admission: SnapshotTaskService, readonly capabilities: CapabilityService, readonly provider: ExplorerProvider) {}
+  constructor(readonly admission: SnapshotTaskService, readonly capabilities: CapabilityService, readonly provider: ExplorerProvider, readonly learning?: LearningService, readonly baseline?: RepositoryBaselineService) {}
   cancel(id: string) { if (this.#active?.id === id) this.#active.abort.abort(); }
   abort() { this.#active?.abort.abort(); }
   async tick() {
@@ -37,10 +39,12 @@ export class ExplorerRunner {
         const snapshot = await this.admission.restore(next.id);
         const binding = await this.admission.bindingForTask(next.id);
         signal.throwIfAborted();
+        const orientation = this.baseline ? this.baseline.context(await this.baseline.current(snapshot, next.repoId, signal), snapshot.metadata.snapshotId) : undefined;
+        const learned = this.learning ? await this.learning.retrieve(snapshot, next.repoId) : [];
         const result = await runExplorer(request, snapshot, this.capabilities, this.provider, signal, async kind => {
           if (binding) await this.admission.trust?.assertBinding(binding);
           store.reserveExplorerBudget(next.id, owner, claimed.generation, kind, kind === 'turn' ? request.budget.maxModelTurns : request.budget.maxToolCalls);
-        });
+        }, learned, orientation);
         signal.throwIfAborted();
         if (binding) await this.admission.trust?.assertBinding(binding);
         store.completeLeased(next.id, owner, claimed.generation, result);

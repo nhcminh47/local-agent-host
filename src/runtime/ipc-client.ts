@@ -16,7 +16,7 @@ export class DaemonClient {
     if (token.length < 32) throw new Error(ERROR_CODES.INVALID_DAEMON_TOKEN);
     this.#token = token;
   }
-  async call(path: 'submit' | 'get' | 'cancel' | 'check-capability' | 'resolve-capability' | 'workspace-select' | 'workspace-grant' | 'workspace-list' | 'workspace-revoke' | 'workspace-deny', body: unknown): Promise<unknown> {
+  async call(path: 'submit' | 'get' | 'cancel' | 'check-capability' | 'resolve-capability' | 'workspace-select' | 'workspace-grant' | 'workspace-list' | 'workspace-revoke' | 'workspace-deny' | 'learning-propose' | 'learning-list' | 'learning-inspect' | 'learning-decide' | 'baseline-inspect' | 'spec-register' | 'spec-list' | 'spec-inspect' | 'spec-finalize' | 'spec-transition' | 'spec-hygiene', body: unknown): Promise<unknown> {
     const response = await fetch(new URL(`/v1/${path}`, this.#origin), { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(25_000), headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.#token}` }, body: JSON.stringify(body) });
     const envelope = IpcEnvelope.parse(await response.json());
     if (!response.ok || !envelope.ok) throw new DaemonRequestError(envelope.error ?? 'DAEMON_ERROR', envelope.value);

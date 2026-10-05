@@ -1,8 +1,10 @@
 # Spec Lifecycle & Context Hygiene
 
-Status: **Planned**
+Status: **Deterministic metadata lifecycle implemented; live qualification open**
 
 Date: **2026-09-21**
+
+Implementation choice (5 October 2026): M2.7 first uses host SQLite lifecycle metadata and a management-reviewed bounded summary. `eligible_for_cleanup` is a non-destructive state, not a file operation. The source repository remains read-only. Knowledge review is recorded before archival; M2.6 candidate promotion stays separate. Archive summaries are excluded from normal explorer context and available only through explicit management history queries.
 
 ## 1. Purpose
 

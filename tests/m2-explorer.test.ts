@@ -204,6 +204,27 @@ test('a prose completion prompt does not consume the grounded completion repair'
   assert.equal(task.explorerModelTurns, 4);
 }));
 
+test('completion reminder offers only finish_analysis and repeated prose still fails', async () => fixture(async (_root, service, capabilities) => {
+  const admitted = await service.submit(input('prose-tool-narrowing'));
+  let turn = 0;
+  await new ExplorerRunner(service, capabilities, { async chat(messages, tools) {
+    turn++;
+    const names = (tools as Array<{ function: { name: string } }>).map(tool => tool.function.name);
+    if (turn === 1) return call('read_file', { path: 'facts.txt' });
+    if (turn === 2) {
+      assert.equal(names.length, 4);
+      return { role: 'assistant', content: 'The observed value is 731.' };
+    }
+    assert.deepEqual(names, ['finish_analysis']);
+    assert.match(messages.at(-1)!.content, /call finish_analysis now/i);
+    return { role: 'assistant', content: 'The observed value is 731.' };
+  } }).tick();
+  assert.equal(turn, 3);
+  const task = service.store.get(admitted.task.id);
+  assert.equal(task.status, 'failed');
+  assert.equal(JSON.parse(task.resultJson!).error, 'EXPLORER_STRUCTURED_COMPLETION_REQUIRED');
+}));
+
 test('a multi-topic question gets one bounded completeness repair for a single finding', async () => fixture(async (_root, service, capabilities) => {
   const admitted = await service.submit({ ...input('coverage-repair'), question: 'Explain VALUE, its declaration, and its source.' });
   const complete = finish({ findings: [

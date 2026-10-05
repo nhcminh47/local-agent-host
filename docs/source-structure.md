@@ -1,6 +1,6 @@
 # Source structure and refactor validation
 
-Updated 20 September 2026. This is a behavior-preserving organization change within the existing M2 read-only product boundary.
+Updated 5 October 2026. This is a behavior-preserving organization change within the existing M2 read-only product boundary.
 
 | Directory | Responsibility |
 | --- | --- |
@@ -10,6 +10,9 @@ Updated 20 September 2026. This is a behavior-preserving organization change wit
 | `src/service/` | Task orchestration, explorer loop, coverage analysis and result validation/rendering; `explorer-memory.ts` and `explorer-context.ts` hold the in-memory context prototype |
 | `src/provider/` | Agent-facing inference contract and Ollama connectivity/explorer adapters |
 | `src/store/` | Durable task/event storage, leases and deadlines |
+| `src/domain/learning-contracts.ts`, `src/store/learning-store.ts`, `src/service/learning-service.ts` | Versioned durable learning contracts, additive SQLite items/decisions and provenance-checked review/retrieval; separate from M2.5 per-attempt memory |
+| `src/domain/repository-baseline-contracts.ts`, `src/exploration/repository-baseline.ts`, `src/store/repository-baseline-store.ts`, `src/service/repository-baseline-service.ts` | Versioned deterministic repository orientation, filtered snapshot evidence, bounded context projection and additive superseded baseline versions |
+| `src/domain/spec-lifecycle-contracts.ts`, `src/store/spec-lifecycle-store.ts`, `src/service/spec-lifecycle-service.ts` | Versioned host-owned spec lifecycle records/events, reviewed archive summaries and non-destructive hygiene inspection |
 | `src/exploration/` | Repository registration, immutable snapshots, filtered read/search and capabilities; `repo-map.ts` derives bounded navigation from eligible snapshot content |
 | `src/service/workspace-trust-service.ts` and `src/store/workspace-grant-store.ts` | Read-grant checks, durable grants and task binding enforcement |
 | `src/shared/` | HTTP JSON framing, MCP response envelopes and allowlisted error matching |
@@ -22,6 +25,8 @@ Updated 20 September 2026. This is a behavior-preserving organization change wit
 | `src/evaluation/` | Acceptance grading separate from runtime execution |
 
 Shared modules contain concrete reused concerns. Domain-specific coverage logic stays in `service/exploration-coverage.ts`; it is not a generic utility. Prompt constants use descriptive names so changes can be reviewed independently of execution logic.
+
+The M2.5 owner paths above are implemented and deterministically tested. The explorer loop advertises only `finish_analysis` after its one completion reminder; the correction is covered in `tests/m2-explorer.test.ts`. Pinned Windows check, 117/117 tests and synthetic MCP smoke passed on 5 October 2026. Three current live comparisons each completed 4/5, so the source profile is not live-qualified; see [M2.5 evidence](m2-m25-context-evidence-2026-10-05.md).
 
 ## Entry points and compatibility
 

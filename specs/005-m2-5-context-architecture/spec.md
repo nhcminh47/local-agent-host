@@ -365,6 +365,10 @@ Compare at least:
 
 M2.5 must not claim a token-saving percentage until measured.
 
+### Bounded completion recovery after live comparison
+
+When a model has already returned prose despite observed evidence, the existing single completion reminder must offer only `finish_analysis` on the next turn. This narrows the advertised tools without changing the model, output/context settings, budgets, accepted evidence, or number of reminder turns. A deterministic test must verify the offered tool list and that a second prose reply still fails closed. Recheck the frozen Windows suite after this correction; a runtime completion alone does not establish quality acceptance.
+
 ## 11. Acceptance criteria
 
 M2.5 is complete when all of the following are true:
@@ -428,6 +432,6 @@ M3 may begin after M2.5 qualification confirms that:
 - grounded evidence survives compaction;
 - read-only quality has not materially regressed;
 - provider cleanup has not weakened cancellation/security behavior;
-- native Mac/Cursor topology risks are either validated or explicitly accepted for the next phase.
+- native Mac/Cursor topology risks are recorded as deferred and unverified while Windows qualification and M3 entry planning proceed; native behavior must not be claimed from Windows evidence.
 
 M3 can then focus on side-effect safety: worktrees, edit contracts, command/test profiles, process containment, verifier isolation, artifacts, and delivery semantics rather than simultaneously redesigning context management.

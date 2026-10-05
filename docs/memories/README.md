@@ -7,12 +7,18 @@ Read this index first, then only the entries relevant to the task. These records
 - Product scope remains M2 read-only snapshot exploration; editing and production test-execution tools remain gated.
 - Source folders are responsibility-based. No `m0`, `m1` or `m2` source folders or forwarding launchers remain.
 - Change tasks follow the [Spec Kit workflow](../development-workflow.md) before implementation and end with a dated memory.
-- Windows deterministic checks and historical live quality evidence do not close native macOS/Cursor or operational gates.
+- Windows is the active qualification platform. Native macOS/Cursor qualification is deferred and unverified; it does not block M2.6, repository baseline, M2.7 or M3 entry planning. Windows evidence is not cross-platform verification.
+- The combined 5 October Windows attempt did not pass M2 quality; M3 entry criteria are documented but mutation remains disabled.
 
 ## Index
 
 | Date | Record | Read when |
 | --- | --- | --- |
+| 2026-10-05 | [Combined Windows M2 qualification and M3 entry](2026-10-05-m2-final-windows-qualification.md) | Checking the latest Windows quality result, human-review gap and blocked M3 entry criteria |
+| 2026-10-05 | [M2.7 lifecycle and hygiene](2026-10-05-m2-7-lifecycle-hygiene.md) | Reviewing non-destructive spec states, archive summaries and hygiene counts |
+| 2026-10-05 | [Repository baseline](2026-10-05-repository-baseline.md) | Reviewing deterministic onboarding, provenance, version refresh and context projection |
+| 2026-10-05 | [M2.6 durable learning](2026-10-05-m2-6-learning-memory.md) | Reviewing candidate provenance, explicit review, freshness and retrieval bounds |
+| 2026-10-05 | [M2.5 Windows comparison](2026-10-05-m2-5-windows-comparison.md) | Reviewing current M2.5 validation, live quality failures or the macOS deferral decision |
 | 2026-10-04 | [M2 context checkpoint](2026-10-04-m2-context-checkpoint.md) | Reviewing the M2.5 RepoMap slice, context prototype or M2.6 plan |
 | 2026-10-04 | [Readiness evidence coverage](2026-10-04-readiness-coverage.md) | Checking the bounded readiness correction, latest candidate and agent-reviewed gaps |
 | 2026-10-04 | [Windows v32 evidence and Cursor client observation](2026-10-04-m2-windows-v32-evidence.md) | Reviewing current M2 Windows quality attempts or the scope of the Cursor UI result |

@@ -17,6 +17,8 @@ No public MCP or persisted schema changes are planned. Snapshot identity, scope,
 
 Use fixture snapshots for deterministic map, scope, redaction, compaction, grounding and restart tests. Run `pnpm check`, `pnpm test` and `pnpm m2:smoke:mcp`. Then compare a frozen Windows acceptance run with the earlier profile; keep human review and native macOS/Cursor gates open until separately observed. Document source identity and any quality regression.
 
+Live comparison on 5 October exposed repeatable truncated prose after source reads in the startup case. The bounded correction is owned by `explorer-loop.ts`: on the one existing completion-reminder turn, advertise only `finish_analysis`. Add a fake-provider regression for tool narrowing and a repeated-prose failure, then rerun the pinned checks and frozen live suite. No acceptance input or limit changes.
+
 ## Pre-implementation analysis
 
 The spec's four capabilities map to the four owners above. RepoMap and memory must remain distinct from the richer repository baseline in package 007 and durable learning in M2.6. The current explorer stores an in-memory transcript and applies the hard cap before a turn; the first implementation should add bounded snapshot navigation without changing the tool/result contract. Later tasks are dependent and cannot be marked complete from a map-only test.

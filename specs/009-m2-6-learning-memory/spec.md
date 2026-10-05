@@ -1,6 +1,6 @@
 # M2.6 Persistent Learning and Skill Memory
 
-Status: planned. Date: 2026-10-04.
+Status: deterministic implementation complete; live qualification open. Date: 2026-10-04.
 
 ## Outcome
 
@@ -29,3 +29,11 @@ The host can propose, review and retrieve reusable repository knowledge across t
 ## Non-goals and dependencies
 
 No autonomous skill installation, global cross-repository learning, vector index or automatic promotion. M2.5 supplies bounded context assembly; package 007 supplies a distinct repository baseline; package 008 consumes candidate decisions during spec finalization. The M2 quality and native client gates remain separate.
+
+## Version-1 acceptance details (5 October 2026)
+
+- Candidates originate only from a completed schema-2 host-grounded finding, selected by a management caller. Store its bounded statement and citation ranges with filtered support hashes, admitted commit/snapshot/scope and canonical root hash. Do not persist the full task transcript or cited source text.
+- A management decision identifies the candidate and a review reason. `candidate → active/rejected`, `active → retired/stale`, and `stale → retired` are allowed; rejected/retired records remain auditable and are never retrieved. There is no model-side promotion path.
+- On retrieval, re-read cited ranges through the current admitted filtered snapshot. A missing, redacted, out-of-scope or changed range excludes the entry and marks active support stale when the source actually changed. An unrelated commit change with identical support can remain active with the original provenance visible.
+- Retrieval is limited to the same canonical repository identity, current scope, four entries and 2 KiB of model context. It is explicitly marked prior reviewed context, lower priority than current snapshot evidence and never an instruction or capability grant.
+- A management token is required for proposal and review endpoints. If unavailable, learning remains dormant; analysis tasks retain their existing read-only behavior.

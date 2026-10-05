@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { readHostConfig, readManagementToken } from '../bootstrap/host-config.js';
+import { readFile } from 'node:fs/promises';
 import { DaemonClient } from './ipc-client.js';
 
 async function confirm(message: string): Promise<void> {
@@ -14,6 +15,44 @@ async function main(args: string[]) {
   const token = await readManagementToken();
   if (!config || !token) throw new Error('HOST_NOT_CONFIGURED');
   const daemon = new DaemonClient(process.env['LOCAL_AGENT_DAEMON_URL'] ?? `http://127.0.0.1:${config.daemonPort}`, token);
+  if (args[0] === 'baseline' && args[1] === 'inspect' && args.length === 3) {
+    console.log(JSON.stringify(await daemon.call('baseline-inspect', { taskId: args[2] })));
+    return;
+  }
+  if (args[0] === 'spec') {
+    const command = args[1];
+    let value: unknown;
+    if (command === 'register' && args.length === 4) value = await daemon.call('spec-register', { taskId: args[2], specId: args[3] });
+    else if (command === 'list' && args.length === 3) value = await daemon.call('spec-list', { taskId: args[2] });
+    else if (command === 'inspect' && args.length === 3) value = await daemon.call('spec-inspect', { recordId: args[2] });
+    else if (command === 'hygiene' && args.length === 3) value = await daemon.call('spec-hygiene', { taskId: args[2] });
+    else if (command === 'finalize' && args.length === 4) {
+      await confirm(`Finalize spec record ${args[2]} using ${args[3]}?`);
+      const summary = JSON.parse(await readFile(args[3]!, 'utf8')) as unknown;
+      value = await daemon.call('spec-finalize', { recordId: args[2], summary });
+    } else {
+      const actions: Record<string, string> = { activate: 'activate', archive: 'archive', restore: 'restore', retire: 'retire', cleanup: 'mark_cleanup_eligible', cancel: 'cancel', supersede: 'supersede' };
+      const action = command ? actions[command] : undefined;
+      if (!action || args.length < 4 || command === 'supersede' && args.length < 5) throw new Error('HOST_USAGE');
+      await confirm(`${command} spec record ${args[2]}?`);
+      value = await daemon.call('spec-transition', { recordId: args[2], action, reason: args.slice(command === 'supersede' ? 4 : 3).join(' '), ...(command === 'supersede' ? { supersededBy: args[3] } : {}) });
+    }
+    console.log(JSON.stringify(value));
+    return;
+  }
+  if (args[0] === 'learning') {
+    const command = args[1];
+    let value: unknown;
+    if (command === 'propose' && args.length === 4) value = await daemon.call('learning-propose', { taskId: args[2], findingId: args[3] });
+    else if (command === 'list' && args.length === 3) value = await daemon.call('learning-list', { taskId: args[2] });
+    else if (command === 'inspect' && args.length === 3) value = await daemon.call('learning-inspect', { itemId: args[2] });
+    else if (['promote', 'reject', 'retire'].includes(command ?? '') && args.length >= 4) {
+      await confirm(`${command} learning item ${args[2]}?`);
+      value = await daemon.call('learning-decide', { itemId: args[2], action: command, reason: args.slice(3).join(' ') });
+    } else throw new Error('HOST_USAGE');
+    console.log(JSON.stringify(value));
+    return;
+  }
   if (args[0] !== 'workspace') throw new Error('HOST_USAGE');
   const command = args[1];
   let value: unknown;

@@ -21,6 +21,13 @@ import { OllamaExplorerProvider } from '../provider/explorer-provider.js';
 import { readHostConfig, readHostToken, readManagementToken } from '../bootstrap/host-config.js';
 import { WorkspaceGrantStore } from '../store/workspace-grant-store.js';
 import { WorkspaceTrustService } from '../service/workspace-trust-service.js';
+import { LearningStore } from '../store/learning-store.js';
+import { LearningService } from '../service/learning-service.js';
+import { LearningDecisionInput } from '../domain/learning-contracts.js';
+import { RepositoryBaselineStore } from '../store/repository-baseline-store.js';
+import { RepositoryBaselineService } from '../service/repository-baseline-service.js';
+import { SpecLifecycleStore } from '../store/spec-lifecycle-store.js';
+import { SpecLifecycleService } from '../service/spec-lifecycle-service.js';
 
 const hostConfig = process.env['LOCAL_AGENT_IPC_TOKEN'] && process.env['LOCAL_AGENT_PROVIDER'] ? null : await readHostConfig();
 const token = process.env['LOCAL_AGENT_IPC_TOKEN'] ?? await readHostToken();
@@ -47,6 +54,12 @@ if (providerName === 'explorer' && !ollamaToken && process.env['OLLAMA_ENV_FILE'
 const secrets = new SecretFilter([token, ...(ollamaToken ? [ollamaToken] : [])]);
 let snapshots: SnapshotTaskService | undefined;
 let explorer: ExplorerRunner | undefined;
+let learningStore: LearningStore | undefined;
+let learning: LearningService | undefined;
+let baselineStore: RepositoryBaselineStore | undefined;
+let baseline: RepositoryBaselineService | undefined;
+let specStore: SpecLifecycleStore | undefined;
+let specs: SpecLifecycleService | undefined;
 if (providerName === 'explorer') {
   const configPath = process.env['LOCAL_AGENT_REPOS_FILE'];
   const repos = new RepoRegistry();
@@ -58,13 +71,19 @@ if (providerName === 'explorer') {
     for (const [id, root] of Object.entries(config)) await repos.register(id, root);
   } else if (!trust) throw new Error(ERROR_CODES.REPO_CONFIG_REQUIRED);
   snapshots = new SnapshotTaskService(store, repos, secrets, trust);
+  learningStore = new LearningStore(dbPath);
+  learning = new LearningService(learningStore, snapshots);
+  baselineStore = new RepositoryBaselineStore(dbPath);
+  baseline = new RepositoryBaselineService(baselineStore, snapshots);
+  specStore = new SpecLifecycleStore(dbPath);
+  specs = new SpecLifecycleService(specStore, snapshots, learningStore);
   const modelOptions = {
     model: process.env['LOCAL_AGENT_MODEL'] ?? hostConfig?.model ?? 'qwen3:8b',
     num_ctx: Number(process.env['LOCAL_AGENT_NUM_CTX'] ?? 8192),
     num_predict: Number(process.env['LOCAL_AGENT_NUM_PREDICT'] ?? 512),
   };
   explorer = new ExplorerRunner(snapshots, capabilities, new OllamaExplorerProvider(process.env['OLLAMA_BASE_URL'] ?? hostConfig?.ollamaUrl ?? 'http://127.0.0.1:11435', ollamaToken, modelOptions,
-    process.env['LOCAL_AGENT_INFERENCE_METRICS'] === '1' ? metric => { process.stderr.write(JSON.stringify({ event: 'inference.metrics', ...metric }) + '\n'); } : undefined));
+    process.env['LOCAL_AGENT_INFERENCE_METRICS'] === '1' ? metric => { process.stderr.write(JSON.stringify({ event: 'inference.metrics', ...metric }) + '\n'); } : undefined), learning, baseline);
   // A crash between persisting a capability decision and requeueing tasks is safe.
   if ((await capabilities.check({ schemaVersion: 1, capability: 'ripgrep' })).status === 'available') store.resumeCapabilityTasks();
 }
@@ -96,7 +115,7 @@ async function execute(taskId: string) {
 const server = createServer(async (request, response) => {
   if (request.headers.origin || !/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(request.headers.host ?? '')) return sendJson(response, HTTP_STATUS.FORBIDDEN, { ok: false, error: ERROR_CODES.INVALID_ORIGIN });
   const supplied = Buffer.from(request.headers.authorization ?? '');
-  const expected = request.url?.startsWith('/v1/workspace-') ? expectedManagementAuth : expectedAuth;
+  const expected = request.url?.startsWith('/v1/workspace-') || request.url?.startsWith('/v1/learning-') || request.url?.startsWith('/v1/baseline-') || request.url?.startsWith('/v1/spec-') ? expectedManagementAuth : expectedAuth;
   if (!expected || supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return sendJson(response, HTTP_STATUS.UNAUTHORIZED, { ok: false, error: ERROR_CODES.UNAUTHORIZED });
   if (request.method !== 'POST') return sendJson(response, HTTP_STATUS.METHOD_NOT_ALLOWED, { ok: false, error: ERROR_CODES.METHOD_NOT_ALLOWED });
   let submittedWorkspaceRef: string | undefined;
@@ -129,6 +148,41 @@ const server = createServer(async (request, response) => {
       const input = z.object({ workspaceRef: z.string() }).strict().parse(body);
       await trust.inspect(input.workspaceRef);
       return sendJson(response, HTTP_STATUS.OK, { ok: true, value: { workspaceRef: input.workspaceRef, denied: true } });
+    }
+    if (request.url === '/v1/learning-propose' && learning) return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await learning.propose(body) });
+    if (request.url === '/v1/learning-list' && learning) {
+      const input = z.object({ taskId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await learning.listForTask(input.taskId) });
+    }
+    if (request.url === '/v1/learning-inspect' && learning) {
+      const input = z.object({ itemId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await learning.inspect(input.itemId) });
+    }
+    if (request.url === '/v1/learning-decide' && learning) {
+      const input = LearningDecisionInput.parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await learning.decide(input.itemId, input.action, input.reason) });
+    }
+    if (request.url === '/v1/baseline-inspect' && baseline) {
+      const input = z.object({ taskId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await baseline.inspect(input.taskId) });
+    }
+    if (request.url === '/v1/spec-register' && specs) return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.register(body) });
+    if (request.url === '/v1/spec-list' && specs) {
+      const input = z.object({ taskId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.list(input.taskId) });
+    }
+    if (request.url === '/v1/spec-inspect' && specs) {
+      const input = z.object({ recordId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.inspect(input.recordId) });
+    }
+    if (request.url === '/v1/spec-finalize' && specs) {
+      const input = z.object({ recordId: z.string().uuid(), summary: z.unknown() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.finalize(input.recordId, input.summary) });
+    }
+    if (request.url === '/v1/spec-transition' && specs) return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.transition(body) });
+    if (request.url === '/v1/spec-hygiene' && specs) {
+      const input = z.object({ taskId: z.string().uuid() }).strict().parse(body);
+      return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await specs.hygiene(input.taskId) });
     }
     if (request.url === '/v1/check-capability') return sendJson(response, HTTP_STATUS.OK, { ok: true, value: await capabilities.check(body) });
     if (request.url === '/v1/resolve-capability') {
@@ -187,5 +241,5 @@ const schedule = explorer ? setInterval(() => {
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => {
   if (schedule) clearInterval(schedule);
   explorer?.abort();
-  server.close(() => { void activeTick.finally(() => { capabilities.close(); grantStore?.close(); store.close(); process.exit(0); }); });
+  server.close(() => { void activeTick.finally(() => { capabilities.close(); grantStore?.close(); specStore?.close(); baselineStore?.close(); learningStore?.close(); store.close(); process.exit(0); }); });
 });
